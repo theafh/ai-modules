@@ -29,7 +29,7 @@ The contradiction is one agent file against three places that already agree with
 
 The agent's terminal condition compounds the defect: its `<relint_until_clean>` step loops the fix until the linter exits with no blocking or warn issues, so a self-created footnote WARN blocks convergence. The cited premise — "the schema requires footnotes once 3+ sources contribute" — is itself false: no such rule exists in the schema or SKILL, and both state the opposite. Anchor edits to the named blocks (`provenance_violation`, `fix_provenance_violation`, `relint_until_clean`) and the `check_footnote_syntax` function rather than to line numbers, which drift.
 
-Related task: [wiki_provenance-via-raw-and-sources.md](../wiki_provenance-via-raw-and-sources.md) co-edits the same agent's provenance remediation (routing source records through `raw/` sidecars + `sources:` frontmatter) and presupposes inline links as the per-claim mechanism. Reconcile wording where the two edits meet so the remediation reads as one coherent rule.
+Related task: [wiki_provenance-via-raw-and-sources.md](wiki_provenance-via-raw-and-sources.md) co-edits the same agent's provenance remediation (routing source records through `raw/` sidecars + `sources:` frontmatter) and presupposes inline links as the per-claim mechanism. Reconcile wording where the two edits meet so the remediation reads as one coherent rule.
 
 ## Approach
 

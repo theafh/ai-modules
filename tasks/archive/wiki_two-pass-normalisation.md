@@ -41,7 +41,7 @@ Files involved:
 Related tasks:
 
 - [wiki_metadata-in-headings.md](wiki_metadata-in-headings.md) — the heading-specific surface of the same failure. It cites this task's named "two-pass remediation" rule and owns the heading/SCHEMA Layer-2 fixtures (Approach **Harness placement**, scenarios **AS-6** / **AS-7**); this task authors the named rule and proves it on a frontmatter surface it alone owns. Both co-edit the agent's `<remediate>` section, so coordinate wording where the edits meet.
-- [wiki_provenance-via-raw-and-sources.md](../wiki_provenance-via-raw-and-sources.md) — the routing destination when displaced semantics name a source.
+- [wiki_provenance-via-raw-and-sources.md](wiki_provenance-via-raw-and-sources.md) — the routing destination when displaced semantics name a source.
 
 ## Approach
 

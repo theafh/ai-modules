@@ -39,7 +39,7 @@ Remediation is not built here. Because the `auto_shaper_wiki` agent runs `lint.p
 
 [wiki_auto-shaper-internal-contradictions.md](wiki_auto-shaper-internal-contradictions.md) already finished: it rewrote `<lint_clean>` with the contested-page warn carve-out. The carve-out stays contested-only; Goal owns why these three findings therefore stay `info`.
 
-Related work: [wiki_provenance-via-raw-and-sources.md](../wiki_provenance-via-raw-and-sources.md) owns mid-conversation `wiki_import` capture into `raw/` + `sources:` (and `wiki_fix` routing for uncaptured narration); it does not define the provenance convention. What counts as a source for this check is the shipped **Provenance** contract already cited above in this section.
+Related work: [wiki_provenance-via-raw-and-sources.md](wiki_provenance-via-raw-and-sources.md) owns mid-conversation `wiki_import` capture into `raw/` + `sources:` (and `wiki_fix` routing for uncaptured narration); it does not define the provenance convention. What counts as a source for this check is the shipped **Provenance** contract already cited above in this section.
 
 ## Approach
 

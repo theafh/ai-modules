@@ -2,8 +2,8 @@
 description: Make `wiki_import` capture implicit mid-conversation sources into a `raw/` sidecar + `sources:` instead of body-prose narration, and have `wiki_fix` route uncaptured ones to `wiki_import`.
 scope: plugins/knowledge_management
 created: 2026-05-28T17:24:54Z
-updated: 2026-11-25T04:46:10Z
-status: implemented
+updated: 2026-11-25T05:08:55Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -21,7 +21,7 @@ This is one of a family of **generalisable refinements** to the wiki skills + `a
 
 Much of the write-side convention has since shipped; this task adds the missing capture trigger and prohibition on top of it rather than restating what exists:
 
-- The ingest workflow in [skills/wiki/SKILL.md](../plugins/knowledge_management/skills/wiki/SKILL.md) already routes explicitly provided sources into `raw/` by kind, pasted text included, and defers edge cases to `references/raw_taxonomy.md` as the canonical classification reference. The Provenance convention defines the citation channels; the capture rule for mid-conversation artifacts and the narration prohibition are what this task adds.
+- The ingest workflow in [skills/wiki/SKILL.md](../../plugins/knowledge_management/skills/wiki/SKILL.md) already routes explicitly provided sources into `raw/` by kind, pasted text included, and defers edge cases to `references/raw_taxonomy.md` as the canonical classification reference. The Provenance convention defines the citation channels; the capture rule for mid-conversation artifacts and the narration prohibition are what this task adds.
 - The SCHEMA template's **Provenance** convention states that attribution belongs next to the claim and `sources:` is the canonical inventory; the agent enforces it through the `provenance_violation` finding and the `<fix_provenance_violation>` move.
 - The SCHEMA template's `## Derived from` section is the unstructured channel for durable external material the wiki points at but does not own or classify (a doctrine file in another repo, a codebase, a notebook). The agent's `<fix_external_source_pointer>` move migrates external pointers there and explicitly declines to capture external files into `raw/` during an audit pass, deferring capture to `wiki_import`'s triage-first protocol.
 
@@ -37,11 +37,11 @@ A second subtle failure: when extracting raw text containing markdown-sensitive 
 
 Files involved:
 
-- [plugins/knowledge_management/skills/wiki_import/SKILL.md](../plugins/knowledge_management/skills/wiki_import/SKILL.md): the capture trigger; broadened to the implicit mid-conversation case (primary edit).
-- [plugins/knowledge_management/agents/auto_shaper_wiki.md](../plugins/knowledge_management/agents/auto_shaper_wiki.md): `<remediate>` section; the detect-and-route guard.
-- [plugins/knowledge_management/skills/wiki/references/template_schema.md](../plugins/knowledge_management/skills/wiki/references/template_schema.md): the **Provenance** convention block.
+- [plugins/knowledge_management/skills/wiki_import/SKILL.md](../../plugins/knowledge_management/skills/wiki_import/SKILL.md): the capture trigger; broadened to the implicit mid-conversation case (primary edit).
+- [plugins/knowledge_management/agents/auto_shaper_wiki.md](../../plugins/knowledge_management/agents/auto_shaper_wiki.md): `<remediate>` section; the detect-and-route guard.
+- [plugins/knowledge_management/skills/wiki/references/template_schema.md](../../plugins/knowledge_management/skills/wiki/references/template_schema.md): the **Provenance** convention block.
 
-Related task: [wiki_raw-kind-rubric-and-out-of-repo-paths.md](archive/wiki_raw-kind-rubric-and-out-of-repo-paths.md) (finished): introduced the documented `source_path:` field these sidecars use for in-repo machine-local origins; the convention is shipped (the `### raw/ Frontmatter` contract and the `raw-source-path` lint check carry it), so this task builds directly on it.
+Related task: [wiki_raw-kind-rubric-and-out-of-repo-paths.md](wiki_raw-kind-rubric-and-out-of-repo-paths.md) (finished): introduced the documented `source_path:` field these sidecars use for in-repo machine-local origins; the convention is shipped (the `### raw/ Frontmatter` contract and the `raw-source-path` lint check carry it), so this task builds directly on it.
 
 ## Approach
 
