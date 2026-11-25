@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.15
+version: 1.11.16
 model: inherit
 background: false
 effort: high
@@ -22,7 +22,9 @@ the audit).
 <remediation_contract>
 The one governing rule for how the agent resolves what it finds: **autonomously
 apply every fix that is safe and deterministic, and surface only genuine
-judgment calls.** A fix is safe and deterministic when it loses no meaning,
+judgment calls** — a full audit applies every such fix across the wiki, while a
+scoped run applies the fixes its approved entries call for
+(`<confirmed_findings_scope>`). A fix is safe and deterministic when it loses no meaning,
 invents no value, and resolves no genuine ambiguity. The corrected state is
 recoverable from what is already present. Apply every such fix in place and
 record it in the per-file change report (`<report_changes>`). Everything else
@@ -72,7 +74,9 @@ exists so the SCHEMA read is never skipped or deferred.
     untouched, so the agent reports that sidecar path and the warn
     stays live while the audit still exits clean. The carve-out is
     scoped to `raw/` sidecars; a page's `filename` warn stays live
-    until `<fix_non_ascii_filename>` renames the page.
+    until `<fix_non_ascii_filename>` renames the page. A scoped run
+    meets the carve-out stated in `<confirmed_findings_scope>`, which
+    keeps every exception above.
   </lint_clean>
   <anatomy_compliance>
     Every page matches its declared type's anatomy. A page of one of the six
@@ -170,12 +174,68 @@ exists so the SCHEMA read is never skipped or deferred.
     taxonomy, domain), `index.md` (catalog), and `log.md` (recent
     activity).
   </wiki_scaffold>
+  <confirmed_findings>
+    An optional confirmed-findings list the request supplied or approved,
+    which makes the run a scoped run (`<confirmed_findings_scope>`). Each
+    entry names three fields: the page path, the defect, and the evidence
+    the finding rests on, a quoted span of that page. A finding about
+    fidelity to a source, meaning whether the page says what its source
+    says, adds the source path and span to that evidence. An entry that
+    arrives without its quoted span is still accepted: fill the span from
+    this run's own full read of the page before re-deriving that entry.
+  </confirmed_findings>
 </inputs>
 
 <protocol>
 
 Run every phase in order. Do not skip orientation, even on a wiki you
 have audited before, because the schema, taxonomy, or domain may have changed.
+
+<confirmed_findings_scope>
+  A run handed the optional `<confirmed_findings>` list is a scoped run; a run
+  without one is a full audit. This block is the one statement of how a scoped
+  run differs from a full audit.
+
+    - **Orientation runs unchanged**, including the `<read_schema>` read the agent
+      never skips.
+    - **Pursued objectives.** The run pursues the listed findings, the lint
+      carve-out below, and `<log_recorded>`. The other `<objective>` items, such
+      as `<index_completeness>`, and the whole-wiki checks, such as
+      `<scaffold_drift>` and `<raw_subtree_drift>`, belong to a full audit.
+    - **Working set.** The listed pages replace the derived working set. Read each
+      listed page in full, together with every source span its entries cite.
+    - **Re-derive before editing.** Re-derive each entry against the page and its
+      source before any edit. Each entry leaves with exactly one disposition:
+      fixed with the matching fix move, refuted with the span that refutes it, or
+      surfaced through the contested-page protocol with the page left as it
+      stands. A fix move is the repair the applicable check prescribes for that
+      kind of defect. A surfaced entry applies no edit at all: the run neither
+      marks the page `contested:` nor bumps its `updated` date, and the page's
+      bytes stay as they were.
+    - **The approved list is the whole fix set.** A defect the run notices outside
+      the list joins the *findings left unfixed* list and stays unfixed.
+    - **Lint gate.** Compare the final lint run with the run taken at the start of
+      the assess phase. Leave no finding that this run's own edits introduced, and
+      report pre-existing findings unfixed. The full-wiki criterion's existing
+      exceptions survive the scoped run: the contested-page warns, the
+      acknowledged insert-only locked-slot extensions, the `log` rotation finding
+      that `<fix_log_rotation>` clears, and the report-only `citation` findings.
+    - **Findings left unfixed.** One report list, named *findings left unfixed*,
+      carries both the pre-existing lint findings the run leaves alone and any
+      defect the run notices outside the approved list; neither kind is fixed.
+    - **Narrowed blocks.** `<derive_page_audit_working_set>` keeps its text,
+      including its contradiction-peer clause, for full audits; under a scoped run
+      the working set is the listed pages and no peer joins it, so a contradiction
+      between a listed page and an unlisted page is reported in the *findings left
+      unfixed* list and the unlisted peer is neither read into the set nor marked
+      `contested`. `<cross_page_contradiction>` keeps its text; its peer read
+      reaches only peers the list already names. `<page_first_iteration>` keeps its
+      text unchanged: each listed page still gets one cold full read and every
+      applicable check, which is how off-list defects are noticed, while only the
+      listed entries are fixed. `<scaffold_alignment_is_in_scope>` keeps its text;
+      a scoped run brings no scaffold forward and reports any drift it notices in
+      the *findings left unfixed* list.
+</confirmed_findings_scope>
 
 <orient>
 
@@ -769,7 +829,9 @@ the fix move.
     clean: skip the remediate phase, but still record this audit's
     baseline via `<append_audit_log_entry>` (a zero-change outcome
     entry) so the next run can scope incrementally, then report
-    "wiki is clean".
+    "wiki is clean". A scoped run never takes that clean exit: it
+    records its audit entry under the baseline rule in
+    `<append_audit_log_entry>` and always emits the per-entry report.
   </compile_issue_list>
 
 </assess>
@@ -777,7 +839,9 @@ the fix move.
 <remediate>
 
 Work through the issue list in severity order: blocking first, then
-warn, then info, then semantic. Within a severity, group issues that
+warn, then info, then semantic. A full audit works the whole issue list
+in that order; a scoped run works the approved entries in that order
+(`<confirmed_findings_scope>`). Within a severity, group issues that
 affect the same file so each file is opened, read, and rewritten once.
 
   <fix_workflow>
@@ -875,8 +939,10 @@ affect the same file so each file is opened, read, and rewritten once.
 
   <fix_moves>
 
-    Apply the move whose name matches the issue category. A `log`
-    rotation finding (warn past 500 entries, blocking past 1000) maps
+    Apply the named move for each issue: a full audit applies the move
+    whose name matches each issue category, while a scoped run applies
+    the moves its approved entries call for (`<confirmed_findings_scope>`).
+    A `log` rotation finding (warn past 500 entries, blocking past 1000) maps
     to `<fix_log_rotation>`, which rotates the log and leaves every
     entry byte-identical. The carve-outs below keep a finding reported
     without an automatic body edit. A `log-heading` finding never
@@ -1543,7 +1609,9 @@ affect the same file so each file is opened, read, and rewritten once.
 
   <relint_until_clean>
     Re-run `python3 "$WIKI_SKILL/scripts/lint.py" "$WIKI"`. Iterate
-    the fix loop until the `<lint_clean>` criterion holds. When a
+    the fix loop until the `<lint_clean>` criterion holds. A scoped
+    run iterates against the carve-out in `<confirmed_findings_scope>`
+    instead of the whole-wiki criterion. When a
     specific info-level finding is intentional (e.g., a deliberately
     oversized synthesis page), record it once as an
     `- Accepted finding: …` bullet in `$WIKI/SCHEMA.md`'s `## Lint`
@@ -1599,7 +1667,11 @@ affect the same file so each file is opened, read, and rewritten once.
     routing that preceded it) in the form "label normalised +
     date/source routed to `sources:`". Report a normalisation whose
     displaced semantics went unrouted as exactly that, so it reaches
-    the user rather than reading as a completed fix.
+    the user rather than reading as a completed fix. A scoped run lists
+    every approved entry with its disposition (fixed, refuted with the
+    refuting span, or surfaced for the user's decision), and its
+    *findings left unfixed* list names every pre-existing lint finding
+    the run leaves alone and every off-list defect it notices.
   </report_changes>
 
 </verify>
@@ -1613,7 +1685,9 @@ affect the same file so each file is opened, read, and rewritten once.
     semantic issues and no live `filename` warn remains), record this
     audit's baseline via
     `<append_audit_log_entry>`, then emit the line "wiki is clean"
-    and stop.
+    and stop. A scoped run never takes that exit: it records its audit
+    entry under the baseline rule in `<append_audit_log_entry>` and
+    emits the per-entry report in place of "wiki is clean".
   </assess_output>
   <remediate_output>
     One fix summary per issue or issue group as the work proceeds, in
@@ -1638,7 +1712,9 @@ affect the same file so each file is opened, read, and rewritten once.
     leave every `$WIKI_SKILL/references/template_*.md` path unedited
     from inside a managed wiki. A declared source root describes one
     wiki's repository layout, so it is never reported as a candidate
-    for the shipped template.
+    for the shipped template. A scoped run adds the per-entry
+    disposition list and the *findings left unfixed* list to this
+    report.
   </verify_output>
   <final_line>
     Final report ends with one line: `audit complete — N issues
@@ -1694,7 +1770,10 @@ affect the same file so each file is opened, read, and rewritten once.
     semantic working set, applying every applicable check before
     advancing to the next page. Every check is a peer; none is
     privileged. Run one cold full read for each page in that set,
-    including same-subject contradiction peers. Do not iterate check by
+    including same-subject contradiction peers. A scoped run still runs
+    every applicable check on each listed page, because the approved
+    list bounds what the run fixes, not what it reads
+    (`<confirmed_findings_scope>`). Do not iterate check by
     check across the working set, because a "passed" verdict on one
     check shapes the next check's reading of the same page -
     confirmation bias that makes subtle drift

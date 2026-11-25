@@ -2094,6 +2094,303 @@ PY
     _as_git_commit "$sb/HOME/proj" "staging commit"
 }
 
+stage_AS-28() {
+    # AS-28 (wiki_fix-accept-confirmed-findings-scope, Acceptance 4/5): a
+    # git-backed wiki whose prior audit entry records the first staging commit
+    # as its baseline, then a second commit that changes one page the approved
+    # findings list does not name (concepts/widget-release-notes.md, which
+    # carries no lint finding so nothing draws the scoped run to read it). A
+    # findings file outside the wiki lists four entries: a section-order defect
+    # with a quoted span, a confidence defect with no quoted span, an entry the
+    # page refutes, and an internal contradiction the run must surface without
+    # editing. A separate unlisted page (concepts/widget-colour.md) carries an
+    # off-taxonomy tag (`shipgate`) that lint reports and the scoped run must
+    # leave unfixed; it is unchanged since the baseline, so reading it cannot
+    # advance the baseline. The scoped run reads only the listed pages, so the
+    # changed unlisted page stays unread and the baseline holds.
+    local sb
+    sb=$(reset_sandbox AS-28)
+    stage "$sb/HOME/proj"
+    git -C "$sb/HOME/proj" init -q
+    "$INIT" "$sb/HOME/proj/wiki" >/dev/null
+    local wiki="$sb/HOME/proj/wiki"
+    python3 - "$wiki/SCHEMA.md" <<'TAXONOMY'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+p.write_text(
+    p.read_text().replace("## Tag Taxonomy\n", "## Tag Taxonomy\n\n- Domain: model\n", 1)
+)
+TAXONOMY
+    cat > "$wiki/concepts/widget-caching.md" <<'CACHING'
+---
+title: widget caching
+created: 2026-05-01
+updated: 2026-05-01
+type: concept
+tags: [model]
+confidence: medium
+---
+
+# widget caching
+
+The widget cache keeps rendered widget output between requests.
+
+## Current state of knowledge
+
+The cache is invalidated when a widget's source record changes. See
+[widget defaults](widget-defaults.md) for the defaults it resolves,
+[widget colour](widget-colour.md) for the shade it stores,
+[widget release notes](widget-release-notes.md) for the release it shipped
+in, and the [backup drill](../procedures/backup-drill.md) for the recovery
+path.
+
+## Definition / explanation
+
+An entry is keyed by widget identity and by the inputs that affect its
+rendering.
+
+## Open questions or debates
+
+None recorded.
+
+## Related concepts
+
+- [widget defaults](widget-defaults.md)
+- [widget colour](widget-colour.md)
+CACHING
+    cat > "$wiki/concepts/widget-defaults.md" <<'DEFAULTS'
+---
+title: widget defaults
+created: 2026-05-01
+updated: 2026-05-01
+type: concept
+tags: [model]
+confidence: high
+---
+
+# widget defaults
+
+The defaults table lists the framework colour for each widget class.
+
+## Definition / explanation
+
+A widget keeps the framework colour unless something above the framework
+supplies one. See [widget caching](widget-caching.md) for how the
+resolved value is stored.
+
+## Current state of knowledge
+
+The framework colour is resolved before any deployment-level override.
+See [widget rendering](widget-rendering.md) for the pass that applies it.
+
+## Open questions or debates
+
+None recorded.
+
+## Related concepts
+
+- [widget caching](widget-caching.md)
+- [widget rendering](widget-rendering.md)
+- [widget release notes](widget-release-notes.md)
+DEFAULTS
+    cat > "$wiki/concepts/widget-rendering.md" <<'RENDERING'
+---
+title: widget rendering
+created: 2026-05-01
+updated: 2026-05-01
+type: concept
+tags: [model]
+confidence: medium
+---
+
+# widget rendering
+
+Rendering turns a widget record into the output a deployment serves.
+
+## Definition / explanation
+
+Rendering runs in three passes: resolve the defaults, compose the layout,
+and paint the result. See [widget defaults](widget-defaults.md) for the
+first pass.
+
+## Current state of knowledge
+
+The pass count is fixed for the current release. See
+[widget caching](widget-caching.md) for how a painted result is kept.
+
+## Open questions or debates
+
+None recorded.
+
+## Related concepts
+
+- [widget defaults](widget-defaults.md)
+- [widget caching](widget-caching.md)
+RENDERING
+    cat > "$wiki/procedures/backup-drill.md" <<'DRILL'
+---
+title: backup drill
+created: 2026-05-01
+updated: 2026-05-01
+type: procedure
+tags: [model]
+confidence: medium
+---
+
+# backup drill
+
+Run the backup drill on a fixed schedule.
+
+## When this applies
+
+Apply it whenever the stored widget records must be proven recoverable.
+
+## The rule
+
+1. Run the drill every 7 days.
+2. Restore the widget cache from the last stored snapshot; see
+   [widget caching](../concepts/widget-caching.md).
+3. Confirm the rendered output matches the snapshot; see
+   [widget rendering](../concepts/widget-rendering.md).
+
+## Pitfalls / edge cases
+
+- The drill runs on a 30-day cycle, so a 7-day schedule double-counts it.
+DRILL
+    cat > "$wiki/concepts/widget-colour.md" <<'COLOUR'
+---
+title: widget colour
+created: 2026-05-01
+updated: 2026-05-01
+type: concept
+tags: [shipgate]
+confidence: medium
+---
+
+# widget colour
+
+The widget colour names the framework shade a rendered widget carries.
+
+## Definition / explanation
+
+Colour is chosen per widget class before rendering starts. See
+[widget defaults](widget-defaults.md) for the default shade.
+
+## Current state of knowledge
+
+The shade is recorded with the rendered output. See
+[widget caching](widget-caching.md) for where that record lives.
+
+## Open questions or debates
+
+None recorded.
+
+## Related concepts
+
+- [widget defaults](widget-defaults.md)
+- [widget caching](widget-caching.md)
+COLOUR
+    cat > "$wiki/concepts/widget-release-notes.md" <<'RELEASENOTES'
+---
+title: widget release notes
+created: 2026-05-01
+updated: 2026-05-01
+type: concept
+tags: [model]
+confidence: medium
+---
+
+# widget release notes
+
+The release notes record what changed in each widget release.
+
+## Definition / explanation
+
+Each release note names the widgets it touched and the rendering change it
+shipped. See [widget rendering](widget-rendering.md) for the pass model the
+notes describe.
+
+## Current state of knowledge
+
+The notes for the current release are complete. See
+[widget caching](widget-caching.md) for the cache behaviour the release
+changed.
+
+## Open questions or debates
+
+None recorded.
+
+## Related concepts
+
+- [widget rendering](widget-rendering.md)
+- [widget caching](widget-caching.md)
+RELEASENOTES
+    python3 - "$wiki/index.md" <<'INDEX'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+text = p.read_text()
+text = text.replace(
+    "## Concepts\n",
+    "## Concepts\n\n"
+    "- [widget caching](concepts/widget-caching.md) — rendered output kept between requests\n"
+    "- [widget colour](concepts/widget-colour.md) — framework shade a widget carries\n"
+    "- [widget defaults](concepts/widget-defaults.md) — framework colour per widget class\n"
+    "- [widget release notes](concepts/widget-release-notes.md) — what changed in each release\n"
+    "- [widget rendering](concepts/widget-rendering.md) — how a widget record becomes output\n",
+    1,
+)
+text = text.replace(
+    "## Procedures\n",
+    "## Procedures\n\n- [backup drill](procedures/backup-drill.md) — prove stored records recoverable\n",
+    1,
+)
+text = text.replace("Total pages: 0", "Total pages: 6", 1)
+p.write_text(text)
+INDEX
+    _as_git_commit "$sb/HOME/proj" "first staging commit"
+    _as_prior_audit_entry "$wiki" "$(git -C "$sb/HOME/proj" rev-parse HEAD)"
+    cat > "$sb/HOME/proj/approved-findings.md" <<'FINDINGS'
+# Approved findings
+
+The user reviewed and approved these findings. Fix exactly these entries.
+
+1. Page: wiki/concepts/widget-caching.md
+   Defect: The page's sections are out of order; "Current state of knowledge"
+   sits before "Definition / explanation".
+   Evidence: "## Current state of knowledge" then "## Definition / explanation".
+
+2. Page: wiki/concepts/widget-defaults.md
+   Defect: The page declares `confidence: high` while it cites no source.
+
+3. Page: wiki/concepts/widget-rendering.md
+   Defect: The page says rendering runs in two passes.
+   Evidence: "rendering runs in two passes".
+
+4. Page: wiki/procedures/backup-drill.md
+   Defect: The page carries two conflicting drill intervals, so a repair has to
+   choose one of them.
+   Evidence: "Run the drill every 7 days" and "the drill runs on a 30-day cycle".
+FINDINGS
+    python3 - "$wiki/concepts/widget-release-notes.md" <<'SECONDCOMMIT'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+text = p.read_text().replace(
+    "## Open questions or debates",
+    "The release also recorded the shade it shipped with.\n\n"
+    "## Open questions or debates",
+    1,
+)
+p.write_text(text)
+SECONDCOMMIT
+    _as_git_commit "$sb/HOME/proj" "second staging commit"
+    _sha_baseline "$wiki/concepts/widget-rendering.md" \
+        "$sb/baseline/widget-rendering.md.sha256"
+    _sha_baseline "$wiki/procedures/backup-drill.md" \
+        "$sb/baseline/backup-drill.md.sha256"
+    _sha_baseline "$wiki/concepts/widget-colour.md" \
+        "$sb/baseline/widget-colour.md.sha256"
+}
+
 stage_MP-1() {
     # MP-1 (wiki_meta-prose-in-page-bodies): oversized custom `todo` page that
     # trips the page-size info finding. After wiki_fix the page body must
@@ -2189,7 +2486,7 @@ idx.write_text(text if text.endswith("\n") else text + "\n")
 PY
 }
 
-ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 L2-10 WI-1 WI-2 WI-3 WI-4 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21 AS-22 AS-23 AS-24 AS-25 AS-26 AS-27 MP-1)
+ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 L2-10 WI-1 WI-2 WI-3 WI-4 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21 AS-22 AS-23 AS-24 AS-25 AS-26 AS-27 AS-28 MP-1)
 
 if [[ $# -eq 0 ]]; then
     for sid in "${ALL_SCENARIOS[@]}"; do

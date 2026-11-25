@@ -3321,6 +3321,108 @@
       ]
     },
     {
+      "id": "AS-28",
+      "name": "auto-shaper-fixes-approved-findings-only",
+      "description": "auto_shaper_wiki (via wiki_fix) receives a user-approved confirmed-findings list as its scope on a git-backed wiki. Two confirmed entries are fixed (one arrived without a quoted span), one entry the page refutes is reported refuted with its page left byte-identical, and an internal contradiction is surfaced with its page left byte-identical. An unlisted page carrying an off-taxonomy tag stays byte-identical and its tag appears in the *findings left unfixed* list, and the new audit entry holds the staged prior baseline because the changed unlisted page was never read in full. Graded against the confirmed-findings scope rule over the top-level passes denominator (wiki_fix-accept-confirmed-findings-scope, Acceptance 4/5).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-28",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Fix the approved findings listed in approved-findings.md in the project root. I reviewed and approved every entry in that file, so hand exactly that list to the audit run.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Treat the approved findings list in approved-findings.md as the run's scope.",
+        "Fix only the entries that list names; report anything else without fixing it."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "finding_dispositions: <one line per approved finding: page path — fixed|refuted|surfaced>",
+        "findings_left_unfixed: <one line per finding left unfixed — every pre-existing lint finding left alone and every defect noticed outside the approved list — or none>"
+      ],
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_section_order_fixed",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/widget-caching.md",
+          "regex": "(?s)## Definition / explanation.*## Current state of knowledge"
+        },
+        {
+          "id": "A3_confidence_lowered_without_span",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/widget-defaults.md",
+          "regex": "(?m)^confidence: (medium|low)$"
+        },
+        {
+          "id": "A4_refuted_page_bytes_unchanged",
+          "type": "file_matches_baseline",
+          "path": "HOME/proj/wiki/concepts/widget-rendering.md",
+          "baseline": "baseline/widget-rendering.md.sha256"
+        },
+        {
+          "id": "A5_judgement_page_bytes_unchanged",
+          "type": "file_matches_baseline",
+          "path": "HOME/proj/wiki/procedures/backup-drill.md",
+          "baseline": "baseline/backup-drill.md.sha256"
+        },
+        {
+          "id": "A6_unlisted_page_bytes_unchanged",
+          "type": "file_matches_baseline",
+          "path": "HOME/proj/wiki/concepts/widget-colour.md",
+          "baseline": "baseline/widget-colour.md.sha256"
+        },
+        {
+          "id": "A7_off_taxonomy_tag_stands",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/concepts/widget-colour.md",
+          "regex": "tags: \\[shipgate\\]"
+        },
+        {
+          "id": "A8_baseline_held_at_staged_value",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "- Audit baseline: (\\S+)[\\s\\S]*?## \\[[^\\]]+\\] audit \\|[\\s\\S]*?- Audit baseline: \\1"
+        },
+        {
+          "id": "A9_refuted_disposition_reported",
+          "type": "report_field_matches",
+          "field": "finding_dispositions",
+          "regex": "concepts/widget-rendering\\.md[^\\n]*refuted"
+        },
+        {
+          "id": "A10_surfaced_disposition_reported",
+          "type": "report_field_matches",
+          "field": "finding_dispositions",
+          "regex": "procedures/backup-drill\\.md[^\\n]*surfaced"
+        },
+        {
+          "id": "A11_unfixed_lists_off_taxonomy_tag",
+          "type": "report_field_matches",
+          "field": "findings_left_unfixed",
+          "regex": "shipgate"
+        },
+        {
+          "id": "A12_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A13_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A14_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
       "id": "MP-1",
       "name": "auto-shaper-no-meta-prose-on-oversized-todo",
       "description": "auto_shaper_wiki (via wiki_fix) handles an oversized custom todo page that trips the page-size info finding without inserting page-convention or lint-sanction prose into the page body. Any accepted-finding rationale appears only in SCHEMA.md's ## Lint section or the audit log. Graded out-of-band against the top-level passes denominator (wiki_meta-prose-in-page-bodies, Acceptance: MP-1).",
