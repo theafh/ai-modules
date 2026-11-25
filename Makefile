@@ -1,7 +1,8 @@
 # ai-modules Makefile.
 #
 # Targets:
-#   make deploy / global / install   deploy artefacts to global config dirs
+#   make deploy / global             deploy artefacts to global config dirs
+#   make install                     prepare the environment: report the declared tool floor (toolchain.conf)
 #   make update                      redeploy every scope the deploy log records, from this checkout
 #   make uninstall                   remove previously deployed artefacts; a scope flag limits it to that scope, a scopeless run covers every scope
 #   make clean                       remove managed deployment backups
@@ -11,10 +12,14 @@
 #   make fix                         auto-fix lint issues where possible
 #   make help                        list targets
 #
-# Tooling required for lint/fix: markdownlint-cli, jq, shellcheck, Python 3.
+# Tooling: `make install` reports the declared floor from toolchain.conf.
+# Python 3 is an accepted standing dependency for helper scripts.
 # Tooling required for plugin-test: bun.
 
 .DEFAULT_GOAL := help
+
+# Declared tool floor read by `make install` (name|detect|minimum|macos|linux).
+TOOLCHAIN := toolchain.conf
 
 # File discovery — evaluated once at parse time. Excludes .git, deployment
 # backup directories, and every regenerated subtree under `tests/` (committed
@@ -63,7 +68,65 @@ deploy: ## Deploy artefacts to global config dirs (--global).
 	./deployment/deployment.sh --global
 
 global: deploy   ## Alias for `make deploy`.
-install: deploy  ## Alias for `make deploy`.
+
+install: ## Prepare the environment: report the declared tool floor (toolchain.conf).
+	@status=0; \
+	platform=$$(uname -s 2>/dev/null || echo unknown); \
+	case "$$platform" in \
+	  Darwin) field=4 ;; \
+	  Linux)  field=5 ;; \
+	  *)      field=0 ;; \
+	esac; \
+	printf 'ai-modules toolchain floor (%s)\n\n' "$$platform"; \
+	while IFS='|' read -r name detect minimum macos linux; do \
+	  case "$$name" in ''|'#'*) continue ;; esac; \
+	  if [ "$$field" -eq 4 ]; then install_cmd=$$macos; \
+	  elif [ "$$field" -eq 5 ]; then install_cmd=$$linux; \
+	  else install_cmd=; fi; \
+	  problem=; \
+	  if ! command -v "$$name" >/dev/null 2>&1; then \
+	    printf '  %-14s missing\n' "$$name"; \
+	    status=1; problem=missing; \
+	  elif [ -n "$$minimum" ]; then \
+	    found=$$($$detect 2>/dev/null | grep -oE '[0-9]+(\.[0-9]+)+' | head -n 1); \
+	    if [ -z "$$found" ]; then \
+	      printf '  %-14s version unknown (could not read one from `%s`)\n' "$$name" "$$detect"; \
+	      status=1; problem=unknown; \
+	    else \
+	      lowest=$$(printf '%s\n%s\n' "$$minimum" "$$found" | sort -V | head -n 1); \
+	      if [ "$$lowest" != "$$minimum" ]; then \
+	        printf '  %-14s below minimum (found %s, need %s)\n' "$$name" "$$found" "$$minimum"; \
+	        status=1; problem=old; \
+	      else \
+	        printf '  %-14s satisfied (%s >= %s)\n' "$$name" "$$found" "$$minimum"; \
+	      fi; \
+	    fi; \
+	  else \
+	    printf '  %-14s satisfied\n' "$$name"; \
+	  fi; \
+	  if [ -n "$$problem" ]; then \
+	    if [ -z "$$install_cmd" ]; then \
+	      printf '      no install command for %s; install %s manually\n' "$$platform" "$$name"; \
+	    else \
+	      manager=$${install_cmd%% *}; \
+	      if [ "$$manager" = sudo ]; then \
+	        manager=$${install_cmd#sudo }; manager=$${manager%% *}; \
+	      fi; \
+	      if command -v "$$manager" >/dev/null 2>&1; then \
+	        printf '      install: %s\n' "$$install_cmd"; \
+	      else \
+	        printf '      install: package manager `%s` is not installed; install %s, then re-run make install\n' "$$manager" "$$manager"; \
+	      fi; \
+	    fi; \
+	  fi; \
+	done < $(TOOLCHAIN); \
+	printf '\n'; \
+	if [ "$$status" -ne 0 ]; then \
+	  printf 'Tool floor not satisfied.\n'; \
+	else \
+	  printf 'Every declared tool is satisfied.\n'; \
+	fi; \
+	exit $$status
 
 update: ## Redeploy every scope the deploy log records, from this checkout (--update).
 	./deployment/deployment.sh --update

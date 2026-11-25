@@ -108,7 +108,8 @@ ai-modules/
 ├── AGENTS.md                # standing repo instructions for coding agents
 ├── CLAUDE.md                # the same instructions for Claude Code
 ├── CHANGELOG.md             # day-grouped history, written by the shipped update_changelog skill
-└── Makefile                 # deploy, update, uninstall, test, lint, and fix entry points
+├── toolchain.conf           # declared tool floor, reported by `make install`
+└── Makefile                 # deploy, install (tool floor), update, uninstall, test, lint, and fix entry points
 ```
 
 The repo runs on the components it ships. Its backlog, knowledge base, charter, and
@@ -218,7 +219,8 @@ Common workflows are wrapped in the [Makefile](Makefile):
 
 ```bash
 make help        # list targets
-make deploy      # deploy artefacts to global config dirs (aliases: global, install)
+make deploy      # deploy artefacts to global config dirs (alias: global)
+make install     # prepare the environment: report the declared tool floor (toolchain.conf)
 make update      # refresh every scope the deploy log records from this checkout
 make uninstall   # remove previously deployed artefacts; a scope flag limits it to that scope, a scopeless run covers every scope
 make clean       # remove managed deployment backups
@@ -231,7 +233,7 @@ For finer-grained control, call `deployment/deployment.sh` directly. See [deploy
 
 ### Linting tools
 
-`make lint` and `make fix` use `markdownlint-cli`, `jq`, `shellcheck`, and Python 3 (install the first three via Homebrew on macOS; Python 3 ships with the Xcode command line tools and most Linux distributions). The frontmatter check is `scripts/lint_frontmatter.py`, which also runs skill_doctor's `discovery_safety.py` in place over every tracked `SKILL.md`.
+`make lint` and `make fix` use `markdownlint-cli`, `jq`, `shellcheck`, and Python 3. Run `make install` to check the declared tool floor in [toolchain.conf](toolchain.conf) and print the install command for anything missing or below its minimum; Python 3 ships with the Xcode command line tools and most Linux distributions. The frontmatter check is `scripts/lint_frontmatter.py`, which also runs skill_doctor's `discovery_safety.py` in place over every tracked `SKILL.md`.
 
 Markdown rules live in [.markdownlint.jsonc](.markdownlint.jsonc). Inline-HTML checks (`MD033`) are off, because skill prompts use pseudo-XML on purpose.
 

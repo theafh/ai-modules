@@ -49,7 +49,8 @@ Makefile                          # task entry point
 
 - `make help`: list every target.
 - `make lint` / `make fix`: runs `markdownlint`, `jq` syntax check, `shellcheck`, and the Python 3 frontmatter gate (`scripts/lint_frontmatter.py`, which also runs skill_doctor's `discovery_safety.py` over every tracked `SKILL.md`). `fix` auto-fixes markdown only.
-- `make deploy`: copy components into vendor config dirs. Aliases: `global`, `install`. **Run only when the user asks for it.**
+- `make deploy`: copy components into vendor config dirs. Alias: `global`. **Run only when the user asks for it.**
+- `make install`: prepare the environment: report the declared tool floor from `toolchain.conf`, naming each tool's status and printing the install command for anything missing or below its minimum. It reports only and runs no install.
 - `make update`: redeploy every scope the deployment log records, from this checkout, with its recorded targets, types, and artefacts. **Run only when the user asks for it.**
 - `make uninstall`: remove deployed artefacts via the deployment log. A scope flag limits it to that scope (pass `--global` or `--project-dir DIR` to the script); a scopeless run covers every scope.
 
