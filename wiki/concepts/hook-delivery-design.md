@@ -87,9 +87,10 @@ loader's behaviour there is inferred.
 
 The arm now skips every JSON hook config whose basename does not match
 `vscode-hooks*`, so no foreign file lands, and the copied `vscode-hooks.json`
-has its relative `./hooks/` command rewritten to an absolute path on the copy
-route. A tree deployed before the filter keeps the strays, and the retraction
-sequence in `deployment/README.md` clears them through the deploy log.
+has its relative `./hooks/` command rewritten on the copy route: to an absolute
+path at global scope, and to `.github/hooks/` under `--project-dir`. A tree
+deployed before the filter keeps the strays, and the retraction sequence in
+`deployment/README.md` clears them through the deploy log.
 
 ### Copilot gets native delivery
 
