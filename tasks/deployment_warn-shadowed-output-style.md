@@ -19,7 +19,7 @@ The split exists because silence has to stay meaningless: a run that inspected o
 
 ## Context
 
-The edit site is the `claude)` arm of the `style)` case in `deployment/deployment.sh`, whose activation half is the call `merge_json_key "$DEPLOYMENT_CONF" "${app_dir}/settings.json" "outputStyle"`. The tree that call writes into follows the run's scope: `CLAUDE_DIR="${PROJECT_DIR}/.claude"` under `--project-dir`, and `CLAUDE_DIR="${HOME_DIR}/.claude"` otherwise. This task lands after [the state-relocation task](archive/deployment_relocate-state-to-home.md), so that call reads the relocated conf in `$HOME` rather than the in-repo `deployment.conf`.
+The edit site is the `claude)` arm of the `style)` case in `deployment/deployment.sh`, whose activation half is the call `merge_json_key "$DEPLOYMENT_CONF" "${app_dir}/settings.json" "outputStyle"`. The tree that call writes into follows the run's scope: `CLAUDE_DIR="${PROJECT_DIR}/.claude"` under `--project-dir`, and `CLAUDE_DIR="${HOME_DIR}/.claude"` otherwise. This task lands after [the state-relocation task](archive/deployment_relocate-state-to-home.md), so that call reads the relocated conf in `$HOME` rather than an in-repo file.
 
 The sibling task [bash 3.2 floor](archive/deployment_bash-32-floor.md) has shipped and rewrote the same arm's `STYLE_MAP` lookup into an indexed-array read, so this task builds on that shipped shape rather than the one quoted here.
 
@@ -29,7 +29,7 @@ The precedence fact this task rests on is recorded in the wiki on [Anthropic Cla
 
 Reporting and exit behaviour are already in place. The `warn()` helper takes a short label and a message and prints without touching any counter, and the script ends with `print_summary` and no error accounting, so an added warning leaves the run's exit status alone.
 
-Regression coverage for this artefact type lives in `tests/deployment/script_tests/style_run.sh`, which stages a scratch home tree and a scratch project, copies the deploy log aside before the checks, and restores it on exit. New scenarios extend that harness rather than starting a second one.
+Regression coverage for this artefact type lives in `tests/deployment/script_tests/style_run.sh`, which stages a scratch home tree and a scratch project and points `DEPLOYED_ARTIFACTS_LOG` at a scratch log inside that tree, so no check writes the machine manifest. New scenarios extend that harness rather than starting a second one.
 
 The arm being edited was built by the archived [output-style Claude groundwork](archive/deployment_output-style-claude-groundwork.md) task, whose Approach defines the two-placement deploy and the first-write prior-value capture inside `merge_json_key`. The shadow check only reads the shadowing files, so it changes neither the recorded prior nor the restore path.
 
@@ -61,15 +61,15 @@ This task's wiki edit sites are the `style:<name>` description in `wiki/concepts
 
 ## Acceptance
 
-Every deploy item below runs under the isolation pattern the style harness already uses: the deploy log copied aside and restored on exit, and a scratch home tree for a `--global` check.
+Every deploy item below runs under the isolation pattern the style harness already uses: a scratch `HOME`, a scratch `DEPLOYED_ARTIFACTS_LOG` inside it, and a scratch home tree for a `--global` check.
 
 - A scratch project whose `.claude/settings.local.json` sets `outputStyle` to a value differing from the conf's `style:<name>` produces, on a `--project-dir` deploy of the style type, exactly one warning carrying the shadowing file path, the shadowing value, the deployed value, and the remedy; the run exits 0.
 - The same scratch project with its local value equal to the deployed style name produces no shadow warning.
 - The same scratch project with `.claude/settings.local.json` absent produces no shadow warning, and with that file present but carrying no `outputStyle` key it produces none either.
 - A `--project-dir` deploy produces no unconditional user-level caveat line, which belongs to the global scope alone.
 - A `--global` deploy of the style type prints the caveat line, unconditional with respect to the shadow check, naming user-level activation, project-level override, and `.claude/settings.local.json`, both when the checkout's own settings carry no divergent key and when they do.
-- A `--global` deploy run with a divergent `outputStyle` staged in this checkout's own `.claude/settings.local.json` (backed aside and restored on exit, in the pattern the harness already applies to the deploy log) additionally produces one warning carrying the shadowing file path, the shadowing value, the deployed value, and the remedy, and identifying that file as the deploy's own repository; with the staged key removed, that warning is absent while the caveat line remains.
-- A `--global` deploy run with a divergent `outputStyle` staged in this checkout's `.claude/settings.json` (created when absent and removed on exit, or backed aside and restored when present, in the pattern the harness already applies to the deploy log) additionally produces one warning carrying that file's path, the shadowing value, the deployed value, and the remedy, identifying it as the deploy's own repository; with that staged value removed, the warning is absent while the caveat line remains.
+- A `--global` deploy run with a divergent `outputStyle` staged in this checkout's own `.claude/settings.local.json` (backed aside and restored on exit, as the harness backs aside the files it stages) additionally produces one warning carrying the shadowing file path, the shadowing value, the deployed value, and the remedy, and identifying that file as the deploy's own repository; with the staged key removed, that warning is absent while the caveat line remains.
+- A `--global` deploy run with a divergent `outputStyle` staged in this checkout's `.claude/settings.json` (created when absent and removed on exit, or backed aside and restored when present, as the harness stages its other fixture files) additionally produces one warning carrying that file's path, the shadowing value, the deployed value, and the remedy, identifying it as the deploy's own repository; with that staged value removed, the warning is absent while the caveat line remains.
 - A `--dry-run` in each scope prints the same shadow-warning and unconditional-caveat lines as the real run in that scope, compared on those diagnostic lines alone; the mode-labelled copy, merge, and backup lines the existing helpers emit (`would-copy`/`would-merge`/`would-bak` under `$DRY_RUN` against `copied`/`merged`/`backup` otherwise) stay outside the comparison, since this task changes neither them nor their labels.
 - `tests/deployment/script_tests/style_run.sh` carries the scenarios above and passes.
 - The style-deploy passages of `deployment/README.md`, including the `style:<name>` directive line, the per-machine configuration paragraph, and the rows beneath them, state the three-file precedence chain, the exact per-project check, the single-checkout reach of the global check, and the caveat; no remaining `style` passage in that file describes the `outputStyle` merge as activation that always takes effect, and the directive line and the paragraph both name the project-level override.
