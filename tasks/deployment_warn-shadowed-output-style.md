@@ -2,8 +2,8 @@
 description: Warn on a style deploy when a settings file the run can read shadows the outputStyle just written, and state the override caveat on every global run for the repos it cannot read.
 scope: deployment
 created: 2026-08-10T09:56:32Z
-updated: 2026-11-25T11:16:23Z
-status: checked
+updated: 2026-11-25T11:21:58Z
+status: ready
 reported-by: Andreas Hoffmann
 ---
 
@@ -31,11 +31,11 @@ Reporting and exit behaviour are already in place. The `warn()` helper takes a s
 
 Regression coverage for this artefact type lives in `tests/deployment/script_tests/style_run.sh`, which stages a scratch home tree and a scratch project, copies the deploy log aside before the checks, and restores it on exit. New scenarios extend that harness rather than starting a second one.
 
-The arm being edited was built by the archived [output-style Claude groundwork](archive/deployment_output-style-claude-groundwork.md) task, whose Approach defines the two-placement deploy and the first-write prior-value capture inside `merge_json_key`. The shadow check runs beside that capture and changes neither the recorded prior nor the restore path.
+The arm being edited was built by the archived [output-style Claude groundwork](archive/deployment_output-style-claude-groundwork.md) task, whose Approach defines the two-placement deploy and the first-write prior-value capture inside `merge_json_key`. The shadow check only reads the shadowing files, so it changes neither the recorded prior nor the restore path.
 
 ## Approach
 
-Add reporting after the `outputStyle` merge in the `claude)` style arm, in the two forms the Goal splits, because what outranks the merge target, and what the run can see at all, differs between the deploy scopes.
+Add reporting in the `claude)` style arm immediately after the `merge_json_key "$DEPLOYMENT_CONF" "${app_dir}/settings.json" "outputStyle"` call returns, never inside `merge_json_key`, whose `$DRY_RUN` early return precedes its first-write prior capture and would otherwise hide the report from every dry run. Deliver it in the two forms the Goal splits, because what outranks the merge target, and what the run can see at all, differs between the deploy scopes.
 
 Under `--project-dir D` the merge writes `D/.claude/settings.json`, and exactly one file outranks it: `D/.claude/settings.local.json`. Read that file and warn on a divergent `outputStyle`. This check is exact and complete for the scope, since the deploy is handed the very tree whose resolution it is affecting.
 
