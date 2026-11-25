@@ -1655,3 +1655,16 @@ section as a state this repository no longer creates.
   section is rewritten as retired state under `### Copilot takes only its own
   file`, closing with the filename filter, the copy-route rewrite, and the
   log-based retraction for a tree deployed before the filter.
+
+## [2026-11-25 16:38] update | Record that harness plugin packages version themselves
+
+The versioning contract described plugins only, leaving a package under
+`harness-plugins/<harness>/<name>/` with no stated bump rule even though the
+concurrency queue has been patch-bumped on nearly every commit that touched it.
+
+- concepts/plugin-packaging-and-versioning.md: `### The versioning contract`
+  gains the harness plugin package paragraph — its `version` lives in its own
+  `package.json`, no manifest or marketplace repeats it, so the lockstep rule
+  has no partner; a new package ships at 1.0.0 and every editing commit raises
+  it. The page's `updated` date moves and `opencode` joins its tags.
+- index.md: the page's summary names the self-versioned harness packages.

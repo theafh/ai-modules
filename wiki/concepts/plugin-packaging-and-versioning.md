@@ -1,9 +1,9 @@
 ---
 title: Plugin packaging and versioning
 created: 2026-08-08
-updated: 2026-11-21
+updated: 2026-11-25
 type: concept
-tags: [plugin, versioning, repo-structure, claude, codex]
+tags: [plugin, versioning, repo-structure, claude, codex, opencode]
 sources: []
 confidence: high
 ---
@@ -58,6 +58,16 @@ itself still ships at 1.0.0.
 Plugin metadata moves in lockstep. When any skill or agent version rises, or a
 new one is added, both `plugin.json` files and both marketplace registrations
 rise to the same new plugin version in the same commit. Four files, one number.
+
+A harness plugin package versions itself, because nothing else describes it. A
+package under `harness-plugins/<harness>/<name>/` carries its `version` in its own
+`package.json`, and that field is the only place the number exists: no manifest
+and no marketplace registration repeats it, so the lockstep rule has no partner
+to keep in agreement. A new package ships at 1.0.0, and every commit that edits
+the package raises it, patch for maintenance and minor for a new capability or
+surface. The deployer discovers a package by the presence of that `package.json`
+and copies the directory whole, so the number an installed tree carries is the
+one the source package held at deploy time.
 
 A published `ai_dev` or `knowledge_management` version updates the local
 marketplace registrations in that same commit as the plugin manifests, so the
