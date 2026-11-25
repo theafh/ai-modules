@@ -54,10 +54,10 @@ This task's wiki edit sites are the `style:<name>` description in `wiki/concepts
 
 **Out of scope:**
 
-- A configurable list of extra repositories to scan, such as a new `deployment.conf` directive naming them. The unconditional caveat, rather than a wider scan, is this task's answer for repositories the run cannot see, and the repo's standing rules keep new deployment-config surfaces to what a request explicitly asks for. This task settles the question as a rejection rather than leaving it for a sibling.
+- A configurable list of extra repositories to scan, such as a new directive in `~/.ai_asset_deploy/config` naming them. The unconditional caveat, rather than a wider scan, is this task's answer for repositories the run cannot see, and the repo's standing rules keep new deployment-config surfaces to what a request explicitly asks for. This task settles the question as a rejection rather than leaving it for a sibling.
 - The user-level `~/.claude/settings.local.json` file, whose rank against the user-level `settings.json` no evidence behind this task establishes. The checked files are the project-level ones whose precedence over the merge target is documented on the wiki pages named under **Context**.
 - A shadow check for the hooks merge that shares the `merge_json_key` path. Project hook settings add to user hooks rather than replacing them, so a differing value there is not a shadow and the same warning would misreport it.
-- Every target other than Claude and Cursor inside the `style)` case, each of which reports that style deployment is not implemented and writes no settings key at all; Cursor generates a project rule file and writes no settings key.
+- Every target other than Claude, Cursor, and Antigravity inside the `style)` case, each of which reports that style deployment is not implemented and writes no settings key at all; Cursor generates a project rule file and Antigravity generates a rule file at both scopes, and neither writes a settings key.
 
 ## Acceptance
 
