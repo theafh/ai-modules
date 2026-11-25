@@ -346,6 +346,14 @@ files.
   four behavioral evals with fixtures, run through `evals/run.py` on the
   default Cursor worker in the shared `tests/lib/eval_runner` pool with a
   logging shim around the deployed helper and a deterministic `grade.sh`. See `evals/README.md`.
+- **`ai_instruction_formatting/`**: Pattern A, bundled-script only. The skill
+  ships `scripts/lint_pseudo_xml.py`, so `script_tests/run.sh` drives it over
+  six fixtures under `script_tests/fixtures/`: one per recognised document
+  shape (prose-only, XML-instruction body, tutorial with an `xml` fence, and
+  mixed-agent), one file that trips an error, and one warning-only file. Each
+  scenario asserts the exit status, the blocking-issue count, the error count,
+  and the detected shape, and the suite exits non-zero on any failed
+  assertion. `run_all.sh` drives it. No behavioural evals.
 - **`ai_instruction_writing/`**: Pattern A, script-only. The skill ships
   no bundled scripts, so `script_tests/` asserts its static prose
   contract instead.
@@ -393,6 +401,33 @@ files.
   tests under `script_tests/` for the baseline-regression detector, the
   deployed-versus-unavailable-versus-`--force-uuid` mode-selection guards, and
   the per-vendor deployed worker path.
+
+## Coverage decisions
+
+`TESTING.md` `## Coverage Expectations` and the standing repo rules on
+regression harnesses require a skill that bundles scripts to have a
+script-test surface somewhere in the repo, and a behaviour-only skill to have
+eval or trigger coverage or a documented reason it carries none. This section
+records the disposition for every behaviour-only skill the selector below
+returns, so a later skill_doctor test-coverage pass reads the reason instead
+of re-flagging the gap.
+
+Selector, re-derived on 2026-11-25: a skill directory under
+`plugins/*/skills/` that carries no `scripts/` directory, has no
+`tests/<skill>/` harness in the inventory above, and has no
+`tests/trigger_evals/<skill>.json` entry. Two families the selector would
+otherwise return already carry coverage and stay outside it: the `task_*`
+members route through the `tests/task/` evals, and `guardrail` is the skill
+`tests/charter_guardrail/` exercises. The `wiki_*` members and `task_explain`
+carry `tests/trigger_evals/` entries.
+
+| Skill | Disposition |
+| :--- | :--- |
+| `format_markdown` | Needs no separate harness: its rules restate markdownlint, and `make lint` runs markdownlint over every tracked markdown file, so the standing gate enforces the contract on real artefacts. |
+| `format_python` | Needs no separate harness: its rules restate ruff, flake8, and pylint, none of which the repo's toolchain floor installs and none of which the repo enforces, so a behavioural eval would measure an external linter's rules rather than a repo contract. |
+| `harness_portability` | Needs no separate harness: it is a read-only advisory skill with no artefact output to grade, and `tests/agent_spinner/` declares it as a deployed artefact its evals load, so its guidance is exercised inside those behavioural evals. |
+| `executive_summary` | Coverage is owed as a behavioural harness: its output contract (a 10-15% length target, prose-only output, no added content) is deterministic enough to grade. A full harness is unbounded backfill beyond this change, so it is filed as [tests_executive-summary-harness.md](../tasks/tests_executive-summary-harness.md). |
+| `spr` | Coverage is owed as a behavioural harness: its output contract (one bullet per source paragraph, no numbered lists, no trailing punctuation, a 1-10 rating) is deterministic enough to grade. A full harness is unbounded backfill beyond this change, so it is filed as [tests_spr-harness.md](../tasks/tests_spr-harness.md). |
 
 ## Grader mechanics
 
