@@ -72,7 +72,7 @@ Related tasks:
 - [Update from the deploy log](deployment_update-from-deploy-log.md) replays
   logged entries through the deploy path, so the entry merge gives the same
   result on a replay as on a first deploy.
-- [VS Code hook routing](../deployment_vscode-hook-routing.md) edits the `vscode)`
+- [VS Code hook routing](deployment_vscode-hook-routing.md) edits the `vscode)`
   arm of the same `hook)` case, records the decision that Claude Code's hooks
   stay out of `settings.json`, and owns Copilot's hook delivery.
 

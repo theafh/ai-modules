@@ -2,8 +2,8 @@
 description: Filter foreign configs out of the vscode hook route and ship a Copilot-schema hook config, leaving the Claude hook sources readable because no documented setting closes them for the Copilot harness.
 scope: deployment
 created: 2026-08-09T18:07:35Z
-updated: 2026-11-25T09:29:53Z
-status: implemented
+updated: 2026-11-25T10:39:07Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: true
@@ -54,7 +54,7 @@ skips the configs not written for it.
 Code and GitHub Copilot CLI, and the CLI reference states that every `*.json`
 there loads at start. The deposit therefore lands where two products parse it,
 which is the contamination
-[foreign directory adoption](../wiki/concepts/foreign-directory-adoption.md)
+[foreign directory adoption](../../wiki/concepts/foreign-directory-adoption.md)
 argues against, produced here by this repository's own installer. That page
 carries the general form of this position and the per-harness switch inventory.
 
@@ -68,9 +68,9 @@ two are relative `./hooks/` paths that only the merge routes rewrite.
 
 ### The contract to write against
 
-[GitHub Copilot in VS Code](../wiki/entities/github-copilot-vs-code.md) carries
+[GitHub Copilot in VS Code](../../wiki/entities/github-copilot-vs-code.md) carries
 the researched hook contract, and
-[hook surface portability](../wiki/concepts/hook-surface-portability.md) carries
+[hook surface portability](../../wiki/concepts/hook-surface-portability.md) carries
 its place beside the other four. The three facts this task builds on:
 
 - Copilot puts hook objects **directly** under the event name, with no matcher
@@ -86,7 +86,7 @@ its place beside the other four. The three facts this task builds on:
 
 ### Related work
 
-[deployment_opencode-hook-bridge.md](deployment_opencode-hook-bridge.md) extends
+[deployment_opencode-hook-bridge.md](../deployment_opencode-hook-bridge.md) extends
 the same per-target hook dispatch for OpenCode, so the two tasks edit one region
 of `deployment.sh` and whichever lands second rebases onto the other's branch
 structure.
@@ -157,7 +157,7 @@ structure.
   decision below rules it out, so its absence is now intended rather than pending.
 - The instructions half of the same adoption. Switching `~/.claude/rules` off
   through `chat.instructionsFilesLocations` belongs with the instructions delivery
-  in [deployment_output-style-vscode.md](deployment_output-style-vscode.md), which
+  in [deployment_output-style-vscode.md](../deployment_output-style-vscode.md), which
   owns that configuration root.
 - Replacing the four per-branch filename tests with one declarative per-target
   allowlist. It is the better structure and it prevents this class of defect
@@ -241,7 +241,7 @@ this task first shipped does not close the Copilot harness's Claude hook route.
   `.claude/settings.json` files, so the native config is the route that works and
   the possible second guard run is harmless because the guard denies idempotently.
 - `merge_settings_map_entries` stays for the sibling
-  [deployment_output-style-vscode.md](deployment_output-style-vscode.md), which
+  [deployment_output-style-vscode.md](../deployment_output-style-vscode.md), which
   merges `chat.instructionsFilesLocations` through it. It merges at entry grain,
   records the map's whole prior value, and now normalizes a settings file that
   carries `//` comments or trailing commas through `strip_jsonc` before the jq
