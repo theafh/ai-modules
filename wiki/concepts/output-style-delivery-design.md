@@ -1,7 +1,7 @@
 ---
 title: Output style delivery design
 created: 2026-08-08
-updated: 2026-11-21
+updated: 2026-11-25
 type: concept
 tags: [output-style, deployment, portability, claude, codex, opencode, antigravity, cursor, copilot]
 sources: [raw/notes/cursor-style-injection-probes-2026-10-06.md]
@@ -69,15 +69,16 @@ style arm becomes the deploy script's first non-plugin asset source, so
 | Copilot in VS Code | `~/.copilot/instructions/<name>.md`, body only | none, always on | file only |
 | OpenCode | a file under the global config tree, body only | add its path to the `instructions` array | file plus key; route decision open |
 | Codex | a generated instructions file under the Codex configuration tree, synthesized per the whole-prompt mechanism | merge `model_instructions_file` into the user configuration | file plus key, replacing |
-| Antigravity | a marked block in `~/.gemini/GEMINI.md` | none | block in a user-owned file, under its rules-file character cap |
+| Antigravity | a generated rule file at `~/.gemini/config/rules/<name>.md` (global) or `<project>/.agents/rules/<name>.md` (project), carrying `trigger: always_on` | none, always on | file only, appending; 24,000-byte per-file cap |
 | Cursor | `.cursor/rules/<name>.mdc` with `alwaysApply: true` | none | project scope; no print-mode-injecting global file path |
 
-Claude and Cursor are the built rows. Claude shipped with the `style` artefact
-type, the repo-root source directory, and the prior-value restore, at both global
-and project scope. Cursor added a generated rule file under a project-dir deploy
-and no new machinery; a global run writes no Cursor file and reports that account
-User Rules take a manual paste. Every other row stays per-target delivery work,
-and each is a delivery decision rather than new machinery.
+Claude, Cursor, and Antigravity are the built rows. Claude shipped with the
+`style` artefact type, the repo-root source directory, and the prior-value
+restore, at both global and project scope. Cursor added a generated rule file
+under a project-dir deploy and no new machinery; a global run writes no Cursor
+file and reports that account User Rules take a manual paste. Antigravity added its
+rule file at both scopes. Every other row stays per-target delivery work, and
+each is a delivery decision rather than new machinery.
 
 Two rows carry a caveat. The Codex row records a decided route, since the
 synthesized replacement won over a marked block in its global rules file and that
@@ -86,18 +87,16 @@ rather than a decision, because the choice between this additive entry and the
 replacing agent-prompt route is still open; the project-scope rejection below
 applies to the replacing route either way.
 
-### The marked block is the one new mechanism
+### The marked block stays the unshipped alternative
 
-Antigravity's global carrier is a single file the user owns,
-`~/.gemini/GEMINI.md`. Writing it wholesale would destroy the user's own
-content, so the deploy writes a delimited block inside it, between begin and end
-markers, rewrites only that block on redeploy, and removes only that span on
-uninstall. It is the Markdown counterpart of the entry merge the script already
-performs for hook configuration, and it generalises: wherever a
-harness's global carrier is one user-owned file rather than a directory, a
-marked block is the safe write. Codex's `~/.codex/AGENTS.md` is the same shape
-and would take the same block, but that additive route lost to the synthesized
-replacement, so nothing writes it today.
+The marked block was designed for a carrier that is a single user-owned file: the
+deploy writes a delimited block between begin and end markers, rewrites only that
+block on redeploy, and removes only that span on uninstall, the Markdown
+counterpart of the entry merge the script already performs for hook configuration.
+No shipped target uses it. Antigravity's global file was that block's candidate and
+now takes a rule file, and Codex's `~/.codex/AGENTS.md` is the same shape and would
+take the same block, but that additive route lost to the synthesized replacement,
+so nothing writes it today.
 
 ### The content transform needs no new machinery
 
@@ -105,18 +104,20 @@ Claude receives the file verbatim, because it is the only target that reads the
 style's own frontmatter. Every other target receives the body with that
 frontmatter stripped, which is what Claude itself does before injecting a style.
 Cursor's rule file then carries Cursor frontmatter in its place,
-`alwaysApply: true` plus the style's description.
+`alwaysApply: true` plus the style's description, and Antigravity's rule file at
+`~/.gemini/config/rules/<name>.md` or `<project>/.agents/rules/<name>.md` carries
+`trigger: always_on` plus that description.
 
 The one clause in the style body that names `keep-coding-instructions`, a
-Claude-only concept, needs wording per target. The Cursor generator rewrites it in
-the generation step, replacing the whole `<engineering_behavior>` element with a
-clause saying that the wording rules govern the named prose surfaces, that coding
-and tool use stay with Cursor's defaults, and that the harness only appends. The
-remaining append-only targets still plan a placeholder substituted per tool
-through the deploy configuration's `replace:` rule. That route needs a
-placeholder the source style does not carry yet, and Claude's verbatim copy would
-then need a substitution of its own, so the targets built next choose between
-the two routes.
+Claude-only concept, needs wording per target. The generation step rewrites it,
+replacing the whole `<engineering_behavior>` element with a clause saying that the
+wording rules govern the named prose surfaces, that coding and tool use stay with
+the harness's defaults, and that the harness only appends. Cursor's generator
+emits that clause with Cursor's defaults, and Antigravity's emits it with
+Antigravity's defaults inside a rule file carrying `trigger: always_on` and
+refuses content over the 24,000-byte per-file cap. Neither target needs a
+placeholder in the source style, because the generation step produces its variant
+without one.
 
 Codex is the exception, and it is an exception in kind rather than degree. Its
 `model_instructions_file` displaces the built-in instructions with no
@@ -213,4 +214,5 @@ how much an append-only target loses.
   items. Their number and status track the delivery work rather than this record,
   so read the backlog for that state.
 - `deployment/deployment.sh`, whose Cursor style arm and
-  `generate_cursor_style_rule` make up the built Cursor row.
+  `generate_cursor_style_rule` make up the built Cursor row and whose Antigravity
+  arm and `generate_antigravity_style_rule` make up the built Antigravity row.

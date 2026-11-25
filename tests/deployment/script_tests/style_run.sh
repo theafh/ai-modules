@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Regression coverage for the style artefact type: Claude two-placement
-# deploy, Cursor project always-apply .mdc generation, and merge_json_key
-# prior-value capture/restore.
+# deploy, Cursor project always-apply .mdc generation, Antigravity always-on
+# rule generation at both scopes, and merge_json_key prior-value
+# capture/restore.
 set -euo pipefail
 
 if [[ "${TEST_VENDOR:-}" == "cursor" ]] || [[ "${1:-}" == "--vendor" && "${2:-}" == "cursor" ]]; then
@@ -328,5 +329,150 @@ jq -e '.keep == true' "$nested_target" >/dev/null ||
   [[ "$style_for_claude" == "natural-language" ]] ||
     fail "table_get on STYLE_MAP should yield natural-language for claude"
 )
+
+# --- Antigravity: one generated always-on rule per scope ---
+AG_LOG="${SCRATCH}/antigravity.log"
+rm -f "$AG_LOG"
+AG_RULES_DIR="${HOME_DIR}/.gemini/config/rules"
+
+# Global dry-run: one rule write, no other artefact write, nothing on disk.
+ag_global_dry="$(HOME="$HOME_DIR" DEPLOYED_ARTIFACTS_LOG="$AG_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type style --target antigravity --dry-run)"
+printf '%s\n' "$ag_global_dry" | grep -q "${AG_RULES_DIR}/natural-language.md" ||
+  fail "antigravity global dry-run missing rule write"
+ag_gen_count="$(printf '%s\n' "$ag_global_dry" | grep -c 'would-gen' || true)"
+assert_eq "$ag_gen_count" "1" "antigravity global dry-run should report one generated rule"
+if printf '%s\n' "$ag_global_dry" | grep -qE 'would-(copy|merge|restore|strip)'; then
+  fail "antigravity global dry-run must report no other artefact write"
+fi
+[[ ! -e "${HOME_DIR}/.gemini" ]] ||
+  fail "antigravity global dry-run wrote under HOME"
+
+# Project dry-run: one rule write in the workspace tree, nothing under HOME.
+ag_project_dry="$(HOME="$HOME_DIR" DEPLOYED_ARTIFACTS_LOG="$AG_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target antigravity --dry-run)"
+printf '%s\n' "$ag_project_dry" | grep -q "${PROJECT_DIR}/.agents/rules/natural-language.md" ||
+  fail "antigravity project dry-run missing rule write"
+ag_project_gen="$(printf '%s\n' "$ag_project_dry" | grep -c 'would-gen' || true)"
+assert_eq "$ag_project_gen" "1" "antigravity project dry-run should report one generated rule"
+if printf '%s\n' "$ag_project_dry" | grep -q "${HOME_DIR}/"; then
+  fail "antigravity project dry-run must not resolve paths under HOME"
+fi
+
+# Seed the scratch global rules dir and the four standalone rule files: three
+# present, one absent, so the deploy must leave every one exactly as it was.
+mkdir -p "$AG_RULES_DIR" "${HOME_DIR}/.gemini/config"
+ag_user_rule="${AG_RULES_DIR}/user-note.md"
+printf '%s\n' '---' 'trigger: manual' '---' 'user rule body' > "$ag_user_rule"
+ag_user_saved="${SCRATCH}/ag-user-note.md"
+cp "$ag_user_rule" "$ag_user_saved"
+ag_tree_agents="${HOME_DIR}/.gemini/AGENTS.md"
+ag_tree_gemini="${HOME_DIR}/.gemini/GEMINI.md"
+ag_config_agents="${HOME_DIR}/.gemini/config/AGENTS.md"
+printf '%s\n' 'standalone tree AGENTS' > "$ag_tree_agents"
+printf '%s\n' 'standalone tree GEMINI' > "$ag_tree_gemini"
+printf '%s\n' 'standalone config AGENTS' > "$ag_config_agents"
+ag_tree_agents_saved="${SCRATCH}/ag-tree-AGENTS.md"
+ag_tree_gemini_saved="${SCRATCH}/ag-tree-GEMINI.md"
+ag_config_agents_saved="${SCRATCH}/ag-config-AGENTS.md"
+cp "$ag_tree_agents" "$ag_tree_agents_saved"
+cp "$ag_tree_gemini" "$ag_tree_gemini_saved"
+cp "$ag_config_agents" "$ag_config_agents_saved"
+
+# Real global deploy adds one style file and touches nothing the user owns.
+HOME="$HOME_DIR" DEPLOYED_ARTIFACTS_LOG="$AG_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type style --target antigravity >/dev/null
+ag_rule="${AG_RULES_DIR}/natural-language.md"
+assert_file "$ag_rule"
+awk 'BEGIN{n=0} /^---$/{n++; next} n==1{print} n>=2{exit}' "$ag_rule" | grep -q 'trigger: always_on' ||
+  fail "antigravity rule missing trigger: always_on in frontmatter"
+if grep -qE 'keep-coding-instructions|force-for-plugin' "$ag_rule"; then
+  fail "antigravity rule must not carry Claude output-style frontmatter keys"
+fi
+if grep -qi 'keep-coding-instructions' "$ag_rule"; then
+  fail "antigravity rule body must not reference keep-coding-instructions"
+fi
+ag_eb="$(tr '\n' ' ' < "$ag_rule" | grep -o '<engineering_behavior>[^<]*</engineering_behavior>' || true)"
+[[ -n "$ag_eb" ]] || fail "antigravity rule missing <engineering_behavior>"
+printf '%s\n' "$ag_eb" | grep -qi 'named prose surfaces' ||
+  fail "antigravity engineering_behavior must name prose surfaces"
+printf '%s\n' "$ag_eb" | grep -qi "Antigravity's defaults" ||
+  fail "antigravity engineering_behavior must name Antigravity's defaults"
+printf '%s\n' "$ag_eb" | grep -qi 'append' ||
+  fail "antigravity engineering_behavior must state harness only appends"
+cmp -s "$ag_user_saved" "$ag_user_rule" ||
+  fail "antigravity deploy changed a pre-existing user rule"
+cmp -s "$ag_tree_agents_saved" "$ag_tree_agents" ||
+  fail "antigravity deploy changed ~/.gemini/AGENTS.md"
+cmp -s "$ag_tree_gemini_saved" "$ag_tree_gemini" ||
+  fail "antigravity deploy changed ~/.gemini/GEMINI.md"
+cmp -s "$ag_config_agents_saved" "$ag_config_agents" ||
+  fail "antigravity deploy changed ~/.gemini/config/AGENTS.md"
+[[ ! -e "${HOME_DIR}/.gemini/config/GEMINI.md" ]] ||
+  fail "antigravity deploy created an absent standalone ~/.gemini/config/GEMINI.md"
+
+# Redeploy leaves exactly one style rule and one log line.
+HOME="$HOME_DIR" DEPLOYED_ARTIFACTS_LOG="$AG_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type style --target antigravity >/dev/null
+ag_rule_count="$(find "$AG_RULES_DIR" -maxdepth 1 -name 'natural-language.md' | wc -l | tr -d '[:space:]')"
+assert_eq "$ag_rule_count" "1" "antigravity redeploy should leave exactly one style rule"
+ag_log_count="$(grep -cF "${ag_rule}"$'\t' "$AG_LOG" || true)"
+assert_eq "$ag_log_count" "1" "antigravity redeploy should leave one log line"
+
+# Uninstall removes the style rule and restores the surrounding user content.
+HOME="$HOME_DIR" DEPLOYED_ARTIFACTS_LOG="$AG_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --uninstall --global --type style --target antigravity >/dev/null
+[[ ! -e "$ag_rule" ]] || fail "antigravity uninstall left the deployed rule"
+cmp -s "$ag_user_saved" "$ag_user_rule" ||
+  fail "antigravity uninstall changed a pre-existing user rule"
+cmp -s "$ag_tree_agents_saved" "$ag_tree_agents" ||
+  fail "antigravity uninstall changed ~/.gemini/AGENTS.md"
+cmp -s "$ag_tree_gemini_saved" "$ag_tree_gemini" ||
+  fail "antigravity uninstall changed ~/.gemini/GEMINI.md"
+cmp -s "$ag_config_agents_saved" "$ag_config_agents" ||
+  fail "antigravity uninstall changed ~/.gemini/config/AGENTS.md"
+[[ ! -e "${HOME_DIR}/.gemini/config/GEMINI.md" ]] ||
+  fail "antigravity uninstall created an absent standalone ~/.gemini/config/GEMINI.md"
+
+# Real project deploy writes the workspace rule; uninstall removes it outright.
+HOME="$HOME_DIR" DEPLOYED_ARTIFACTS_LOG="$AG_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target antigravity >/dev/null
+ag_project_rule="${PROJECT_DIR}/.agents/rules/natural-language.md"
+assert_file "$ag_project_rule"
+awk 'BEGIN{n=0} /^---$/{n++; next} n==1{print} n>=2{exit}' "$ag_project_rule" | grep -q 'trigger: always_on' ||
+  fail "antigravity project rule missing trigger: always_on in frontmatter"
+HOME="$HOME_DIR" DEPLOYED_ARTIFACTS_LOG="$AG_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --uninstall --project-dir "$PROJECT_DIR" --type style --target antigravity >/dev/null
+[[ ! -e "$ag_project_rule" ]] || fail "antigravity project uninstall left the deployed rule"
+
+# Generated content over the 24,000-byte cap fails and writes nothing.
+oversize_src="${SCRATCH}/oversize-style.md"
+{
+  printf '%s\n' '---' 'name: oversize' 'description: "Oversized fixture"' 'keep-coding-instructions: true' '---'
+  printf '%s\n' '<engineering_behavior>original</engineering_behavior>'
+  head -c 25000 /dev/zero | tr '\0' 'x'
+  printf '\n'
+} > "$oversize_src"
+oversize_dest="${SCRATCH}/oversize-rules/oversize.md"
+mkdir -p "$(dirname "$oversize_dest")"
+# The assignments below configure the sourced deployment.sh; shellcheck
+# cannot see their use through `source=/dev/null`.
+# shellcheck disable=SC2034
+if (
+  set -- --uninstall
+  DEPLOYMENT_SH_SKIP_MAIN=1
+  # shellcheck source=/dev/null
+  source "$DEPLOY_SCRIPT"
+  DRY_RUN=false
+  DEPLOYED_ARTIFACTS_LOG="$AG_LOG"
+  generate_antigravity_style_rule "$oversize_src" "$oversize_dest" "antigravity" "style"
+) > "${SCRATCH}/oversize.out" 2>&1; then
+  fail "oversized antigravity rule should fail"
+fi
+grep -qE '[0-9]{5} bytes' "${SCRATCH}/oversize.out" ||
+  fail "oversized antigravity rule must name the actual size"
+grep -q '24000-byte per-file cap' "${SCRATCH}/oversize.out" ||
+  fail "oversized antigravity rule must name the limit"
+[[ ! -e "$oversize_dest" ]] || fail "oversized antigravity rule must write nothing"
 
 printf 'Style deployment regression passed\n'

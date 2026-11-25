@@ -443,6 +443,7 @@ for form in "${FORMS[@]}"; do
   opencode_out="${OUT}/opencode-${form}.md"
   antigravity_out="${OUT}/antigravity-${form}.md"
   cursor_out="${OUT}/cursor-${form}.mdc"
+  antigravity_style_out="${OUT}/antigravity-style-${form}.md"
   codex_out="${OUT}/codex-${form}.toml"
   rewritten_out="${OUT}/rewritten-${form}.md"
 
@@ -452,6 +453,8 @@ for form in "${FORMS[@]}"; do
     "$source_path" "$antigravity_out" antigravity agent >/dev/null
   run_in_deploy_shell generate_cursor_style_rule \
     "$source_path" "$cursor_out" cursor style >/dev/null
+  run_in_deploy_shell generate_antigravity_style_rule \
+    "$source_path" "$antigravity_style_out" antigravity style >/dev/null
   run_in_deploy_shell generate_toml_agent \
     "$source_path" "$codex_out" codex agent >/dev/null
   run_in_deploy_shell rewrite_agent_frontmatter \
@@ -460,6 +463,7 @@ for form in "${FORMS[@]}"; do
   compare_yaml "opencode (${form})" "$source_path" "$opencode_out"
   compare_yaml "antigravity (${form})" "$source_path" "$antigravity_out"
   compare_yaml "cursor style rule (${form})" "$source_path" "$cursor_out"
+  compare_yaml "antigravity style rule (${form})" "$source_path" "$antigravity_style_out"
   compare_yaml "rewrite_agent_frontmatter (${form})" "$source_path" "$rewritten_out"
   compare_toml "codex (${form})" "$source_path" "$codex_out"
   compare_codex_body "codex developer_instructions (${form})" \
@@ -469,6 +473,7 @@ done
 # The Cursor rule built from a double-quoted value holding a colon followed by
 # a space must parse cleanly, which quote stripping would break.
 assert_yaml_clean "cursor (double)" "${OUT}/cursor-double.mdc"
+assert_yaml_clean "antigravity style (double)" "${OUT}/antigravity-style-double.md"
 
 # --- Byte-level proof for the escapes a shell string cannot carry ----------
 # The TOML must hold `\u0000` for the NUL escape, real UTF-8 bytes for the
@@ -526,7 +531,7 @@ negative_controls=$((negative_controls + 1))
 
 # --- Deploy log: every row in the scratch log, the real log untouched ------
 [[ -s "$TEST_LOG" ]] || fail "no generator appended to the scratch deploy log"
-expected_rows=$((${#FORMS[@]} * 4))
+expected_rows=$((${#FORMS[@]} * 5))
 actual_rows="$(wc -l < "$TEST_LOG" | tr -d ' ')"
 [[ "$actual_rows" == "$expected_rows" ]] ||
   fail "scratch deploy log has ${actual_rows} rows, expected ${expected_rows}"

@@ -383,7 +383,7 @@ files.
   `script_tests/style_run.sh` covers output-style deployment and uninstall;
   `script_tests/description_round_trip_run.sh` covers the description round
   trip through every frontmatter-rebuilding generator (OpenCode, Antigravity,
-  Cursor style rule, Codex TOML) and `rewrite_agent_frontmatter` across the
+  Antigravity style rule, Cursor style rule, Codex TOML) and `rewrite_agent_frontmatter` across the
   plain, single-quoted, double-quoted, and folded and literal block-scalar
   forms with clip, `-`, and `+` chomping, including a quote-stripped negative
   control and a byte-identical real-deploy-log assertion;

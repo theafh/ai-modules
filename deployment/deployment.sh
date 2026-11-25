@@ -2477,6 +2477,120 @@ generate_cursor_style_rule() {
   append_deployed_artifact_log "$dest" "$target_id" "$artifact_type" "$source"
 }
 
+# Antigravity truncates any single rule file larger than this, measured after
+# @[label](path) includes expand.
+ANTIGRAVITY_STYLE_MAX_BYTES=24000
+
+# ---------------------------------------------------------------------------
+# Generate an Antigravity always-on rule from a Claude output-style source.
+#
+# Antigravity reads rules from a rules/ directory at each scope and requires
+# frontmatter on every file there: a rule file with missing frontmatter or an
+# unrecognised trigger is silently discarded. Strip the Claude frontmatter,
+# emit trigger: always_on, and rewrite <engineering_behavior> so the wording
+# rules govern prose surfaces, coding stays with Antigravity defaults, and the
+# harness only appends. Refuse to write a file over the per-file byte cap,
+# because Antigravity would truncate it, and report the generated size because
+# the file also competes for the shared always_on token budget.
+# ---------------------------------------------------------------------------
+generate_antigravity_style_rule() {
+  local source="$1"
+  local dest="$2"
+  local target_id="$3"
+  local artifact_type="$4"
+
+  if [[ ! -f "$source" ]]; then
+    err "missing" "source not found: $source"
+    return 1
+  fi
+
+  local -a description_lines=()
+  local capture_description=false
+  local in_frontmatter=false frontmatter_done=false
+  local body=""
+  local line=""
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if ! $frontmatter_done && [[ "$line" == "---" ]]; then
+      if $in_frontmatter; then
+        in_frontmatter=false
+        frontmatter_done=true
+      else
+        in_frontmatter=true
+      fi
+      continue
+    fi
+
+    if $in_frontmatter; then
+      if $capture_description; then
+        if [[ -z "$line" || "$line" == [[:space:]]* ]]; then
+          description_lines+=("$line")
+          continue
+        fi
+        capture_description=false
+      fi
+      if [[ "$line" =~ ^description:[[:space:]]*(.*)$ ]]; then
+        description_lines=("${BASH_REMATCH[1]}")
+        capture_description=true
+      fi
+      continue
+    fi
+
+    body+="${line}"$'\n'
+  done < "$source"
+
+  body="${body%$'\n'}"
+
+  local antigravity_engineering
+  antigravity_engineering='<engineering_behavior>The wording rules govern the named prose surfaces. Coding and tool-use behaviour stay with Antigravity'\''s defaults. This harness only appends.</engineering_behavior>'
+
+  if [[ "$body" == *"<engineering_behavior>"* ]]; then
+    body="$(
+      ENGINEERING_BEHAVIOR="$antigravity_engineering" perl -0pe \
+        's/<engineering_behavior>.*?<\/engineering_behavior>/$ENV{ENGINEERING_BEHAVIOR}/s' \
+        <<< "$body"
+    )"
+  else
+    err "missing" "source has no <engineering_behavior>: $source"
+    return 1
+  fi
+
+  local content=""
+  content+="---"$'\n'
+  if [[ ${#description_lines[@]} -gt 0 ]]; then
+    # The trailing sentinel keeps emit_yaml_description's final newlines, which
+    # command substitution would strip, so a folded description stays byte-true.
+    local description_block
+    description_block="$(emit_yaml_description "${description_lines[@]}"; printf x)"
+    content+="${description_block%x}"
+  fi
+  content+="trigger: always_on"$'\n'
+  content+="---"$'\n\n'
+  content+="${body}"
+
+  local content_bytes
+  content_bytes="$(printf '%s' "$content" | wc -c | tr -d '[:space:]')"
+
+  if [[ "$content_bytes" -gt "$ANTIGRAVITY_STYLE_MAX_BYTES" ]]; then
+    err "too-large" "antigravity rule is ${content_bytes} bytes, over the ${ANTIGRAVITY_STYLE_MAX_BYTES}-byte per-file cap: $dest"
+    return 1
+  fi
+
+  if $DRY_RUN; then
+    SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
+    info "would-gen" "$dest (antigravity style rule, ${content_bytes} bytes)"
+    return 0
+  fi
+
+  if [[ -L "$dest" || -f "$dest" ]]; then rm "$dest"; fi
+
+  printf '%s\n' "$content" > "$dest"
+
+  ok "generated" "$dest (antigravity style rule, ${content_bytes} bytes; cap ${ANTIGRAVITY_STYLE_MAX_BYTES})"
+  SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
+  append_deployed_artifact_log "$dest" "$target_id" "$artifact_type" "$source"
+}
+
 # ---------------------------------------------------------------------------
 # Install a single artifact into one app target
 # ---------------------------------------------------------------------------
@@ -2813,6 +2927,15 @@ install_for_app() {
             generate_cursor_style_rule "$source_abs" "$dest_path" "$app_id" "$type"
             maybe_apply_replacements "$dest_path" ${replacement_specs[@]+"${replacement_specs[@]}"}
           fi
+          ;;
+        antigravity)
+          # ANTIGRAVITY_DIR is <project>/.agents under --project-dir and
+          # ~/.gemini/config under --global, so the rule lands in the rules/
+          # directory both scopes read.
+          local dest_dir="${app_dir}/rules"
+          ensure_dir "$dest_dir"
+          local dest_path="${dest_dir}/${name}.md"
+          generate_antigravity_style_rule "$source_abs" "$dest_path" "$app_id" "$type" || exit 1
           ;;
         *)
           info "skip" "[$name] style deployment not implemented for $app_id"

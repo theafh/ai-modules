@@ -1,7 +1,7 @@
 ---
 title: Google Antigravity
 created: 2026-08-08
-updated: 2026-11-21
+updated: 2026-11-25
 type: entity
 tags: [antigravity, skill, agent, hook, plugin, discovery, verification-gap]
 sources: []
@@ -15,9 +15,9 @@ confidence: medium
 Antigravity is Google's agent harness and the replacement target for the retired
 consumer Gemini CLI surface, which Google retired on 18 June 2026 while paid and
 enterprise API-key access continued. This repository deploys
-skills, agents, and hooks to it, and the open style work targets the rules
-surface at both global and project scope. Workflows, plugin bundles, and sidecars
-are surfaces nothing here writes.
+skills, agents, and hooks to it, and deploys the output style as an always-on
+rule file at both global and project scope. Workflows, plugin bundles, and
+sidecars are surfaces nothing here writes.
 
 It diverges from the others in four ways: a native `.agents/` workspace tree that
 two other harnesses also read, global roots that differ by artefact class rather
@@ -48,14 +48,18 @@ resolves by whichever tool scans last, worked through in
 
 ### Global roots split by artefact class
 
-Antigravity ships as three products, and its global configuration diverges by
-artefact class rather than by product: skills and plugins split across the
-products while everything else converges under `~/.gemini/config/`. So one global
-deploy reaches all three products for agents, hooks, MCP, and sidecars, and fails
-to for skills and plugins. Global rules live in a modular
-`~/.gemini/config/rules/` directory, with the standalone `~/.gemini/GEMINI.md` as
-the single-file alternative one level above `config/`. The per-class paths, what
-they mean for a deploy, and the output tree that is not a configuration root are
+Antigravity ships as the Antigravity App, the Antigravity CLI, the Antigravity IDE
+and its editor extensions, and the Antigravity SDK, and its global configuration
+diverges by artefact class rather than by surface: skills and plugins split across
+the products while everything else converges under `~/.gemini/config/`. So one
+global deploy reaches the App, the CLI, and the IDE with its editor extensions for
+agents, hooks, MCP, and sidecars, and fails to for skills and plugins, while the
+SDK reads no configuration tree and stays outside a global deploy's reach. Global
+rules live in a modular `~/.gemini/config/rules/` directory beside the standalone
+`~/.gemini/AGENTS.md`, `~/.gemini/GEMINI.md`,
+`~/.gemini/config/AGENTS.md`, and `~/.gemini/config/GEMINI.md`, which stay always
+active and need no frontmatter. The per-class paths, what they mean for a deploy,
+and the output tree that is not a configuration root are
 on [Antigravity global configuration roots](../concepts/antigravity-global-roots.md).
 
 ### Skills
@@ -156,12 +160,14 @@ Google's `/docs/sidecars`.
 ### Rules and workflows
 
 Workspace rules are Markdown under `.agents/rules/`, global rules live in
-`~/.gemini/config/rules/` or the standalone `~/.gemini/GEMINI.md` applied across all
-workspaces, and workflows are Markdown
-in either scope invoked as `/workflow-name` slash commands. Each rule file is
-capped at 24,000 bytes. The four
+`~/.gemini/config/rules/` beside the standalone `~/.gemini/AGENTS.md`,
+`~/.gemini/GEMINI.md`, `~/.gemini/config/AGENTS.md`, and
+`~/.gemini/config/GEMINI.md` applied across all workspaces, and workflows are
+Markdown in either scope invoked as `/workflow-name` slash commands. A rule file
+under a `rules/` directory with missing frontmatter or an unrecognised trigger is
+silently discarded. Each rule file is capped at 24,000 bytes. The four
 activation modes, Manual, Always On, Model Decision, and Glob, are documented for
-rule files under a `rules/` directory at either scope; a standalone `GEMINI.md`
+rule files under a `rules/` directory at either scope; a standalone rules file
 names no mode because it is always applied. The rules documentation describes no tone, persona, output-format, or
 system-prompt-replacement feature at all, presenting rules purely as constraints
 the agent follows. This section was re-checked against `/docs/rules-workflows` on

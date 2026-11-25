@@ -1,7 +1,7 @@
 ---
 title: Antigravity global configuration roots
 created: 2026-08-09
-updated: 2026-11-21
+updated: 2026-11-25
 type: concept
 tags: [antigravity, discovery, deployment]
 sources: []
@@ -40,8 +40,9 @@ against `~/.gemini/antigravity-cli/plugins/<plugin_name>/` for the CLI.
 
 Agents, `hooks.json`, `mcp_config.json`, and `sidecars/` are single-rooted under
 `~/.gemini/config/`. Global rules live in a modular `~/.gemini/config/rules/`
-directory, with the standalone `~/.gemini/GEMINI.md` one level above
-`config/`, and the CLI keeps its own preferences
+directory beside the standalone `~/.gemini/AGENTS.md`, `~/.gemini/GEMINI.md`,
+`~/.gemini/config/AGENTS.md`, and `~/.gemini/config/GEMINI.md`, which need no
+frontmatter and stay always active, and the CLI keeps its own preferences
 at `~/.gemini/antigravity-cli/settings.json`.
 
 So the claim that one global deploy reaches the IDE, the CLI, and 2.0 is neither
