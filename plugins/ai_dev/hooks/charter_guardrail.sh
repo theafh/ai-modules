@@ -5,19 +5,23 @@ set -u
 #
 # Block any mutation of the repo-root CHARTER.md unless the operator is on a
 # human-reviewed guardrail/charter-* branch. The guard runs as a PreToolUse
-# hook on Anthropic Claude, OpenAI Codex, and Google Antigravity, and inspects
-# the mutation surfaces each harness exposes, because a charter rewrite can
-# arrive through any of them:
+# hook on Anthropic Claude, OpenAI Codex, Google Antigravity, and VS Code
+# Copilot, and as a permission-evaluate hook through the OpenCode
+# charter-guardrail bridge, and inspects the mutation surfaces each harness
+# exposes, because a charter rewrite can arrive through any of them:
 #
-#   1. A direct file edit (Claude Edit/Write -> tool_input.file_path).
+#   1. A direct file edit (Claude Edit/Write, VS Code Copilot edit/write ->
+#      tool_input.file_path).
 #   2. An apply_patch envelope (Codex -> tool_input.command patch markers).
 #   3. An Antigravity file-writing tool, detected by scanning string values in
 #      toolCall.args for any non-read tool whose argument schema is unpublished.
-#   4. A shell command (Claude/Codex Bash tool -> tool_input.command;
-#      Antigravity run_command -> toolCall.args.CommandLine) that redirects into,
-#      moves, copies, removes, restores, or edits CHARTER.md in place
-#      (code.claude.com/docs/en/hooks, developers.openai.com/codex/hooks,
-#      antigravity.google/docs/hooks).
+#   4. A shell command (Claude/Codex Bash tool, VS Code Copilot shell ->
+#      tool_input.command; Antigravity run_command -> toolCall.args.CommandLine)
+#      that redirects into, moves, copies, removes, restores, or edits
+#      CHARTER.md in place (code.claude.com/docs/en/hooks,
+#      developers.openai.com/codex/hooks, antigravity.google/docs/hooks,
+#      code.visualstudio.com/docs/agent-customization/hooks). The OpenCode
+#      bridge sends the same envelope shape from a permission-evaluate action.
 #
 # The shell scan is a best-effort static reading of the command. A path built
 # from a shell variable, or an in-place edit by an interpreter outside the

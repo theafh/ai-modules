@@ -37,12 +37,12 @@ equivalent is ready yet.
 
 ### What ships and where the deploy routes it
 
-The repository ships one shared policy script, three harnesses' worth of
-configuration, and an OpenCode bridge plugin package. The script is a single
-shell file. The configurations are Claude's plugin-native `hooks.json`, a Codex
-pair splitting the plugin-manifest file from the config-layer file, and one
-Antigravity file. The bridge is the `charter-guardrail` package, which invokes
-the script from a permission hook.
+The repository ships one shared policy script, a hook configuration file for
+each harness it wires, and an OpenCode bridge plugin package. The script is a
+single shell file. The configurations are Claude's plugin-native `hooks.json`, a
+Codex pair splitting the plugin-manifest file from the config-layer file, one
+Antigravity file, and VS Code Copilot's `vscode-hooks.json`. The bridge is the
+`charter-guardrail` package, which invokes the script from a permission hook.
 
 The deploy script routes them unevenly, and the unevenness is worth knowing
 before reading a deployed tree. It copies the shell script into the hook
@@ -59,35 +59,37 @@ receives the script beside the `charter-guardrail` bridge package, which calls i
 from `permission.evaluate`; the deploy writes no hook configuration there
 because OpenCode has none.
 
-### Copilot receives every file
+### Copilot takes only its own file
 
-Copilot is the one route with no name filter, so every hook configuration in the
-tree lands in its hook directory, including the four written for other harnesses.
-That deposit is not idle clutter. `~/.copilot/hooks` is the documented user-scope
+This section records a retired state. Until the `vscode` hook arm gained a
+filename filter, Copilot was the one route with no filter, so every hook
+configuration in the tree landed in its hook directory, including the four
+written for other harnesses. `~/.copilot/hooks` is the documented user-scope
 hook root for **both** Copilot in VS Code and GitHub Copilot CLI, and the CLI
-reference states that every `*.json` in it loads at start, in alphabetical order,
-with every matching hook running. Four foreign files land where two products
-actively parse them, which is the deposit
-[foreign directory adoption](foreign-directory-adoption.md) argues against, made
-by this repository's own installer rather than by a harness overreaching.
+reference states that every `*.json` in it loads at start, in alphabetical
+order, with every matching hook running, so four foreign files landed where two
+products actively parse them. That is the deposit
+[foreign directory adoption](foreign-directory-adoption.md) argues against,
+made by this repository's own installer rather than by a harness overreaching.
 
-Nothing executes today, and only because two independent failures both hold. The
-three files shaped `{"hooks": {"PreToolUse": […]}}` are structurally valid, so
-each is accepted and then each item is dropped, since a Claude or Codex matcher
-group carries no `command` field; the Antigravity file has no top-level `hooks`
-key at all and contributes nothing. Independently, every `command` value is
-unusable here anyway, because two name `${CLAUDE_PLUGIN_ROOT}` or `${PLUGIN_ROOT}`
-which no Copilot product sets, and two are relative `./hooks/…` paths that only
-the merge routes rewrite, never the copy route Copilot is on. What remains is a
-validation error logged per file at every session start of two products. The
-drop-the-item rule is documented in GitHub's CLI reference and is not restated on
-the Preview VS Code page, so the VS Code loader's behaviour here is inferred.
+The deposit did no harm only because two independent failures both held. The
+three files shaped `{"hooks": {"PreToolUse": […]}}` were structurally valid, so
+each was accepted and then each item was dropped, since a Claude or Codex
+matcher group carries no `command` field; the Antigravity file had no top-level
+`hooks` key at all and contributed nothing. Independently, every `command`
+value was unusable here anyway, because two name `${CLAUDE_PLUGIN_ROOT}` or
+`${PLUGIN_ROOT}` which no Copilot product sets, and two are relative
+`./hooks/…` paths that only the merge routes rewrite, never the copy route
+Copilot was on. What remained was a validation error logged per file at every
+session start of two products. The drop-the-item rule is documented in GitHub's
+CLI reference and is not restated on the Preview VS Code page, so the VS Code
+loader's behaviour there is inferred.
 
-The finding cuts the other way too. Copilot's stdin envelope is snake_case like
-Claude's and exit 2 blocks, which is the signalling the shared script already
-implements, so what is missing is not capability but a Copilot-shaped file: hook
-objects flattened directly under the event name rather than wrapped in matcher
-groups, and an absolute command path.
+The arm now skips every JSON hook config whose basename does not match
+`vscode-hooks*`, so no foreign file lands, and the copied `vscode-hooks.json`
+has its relative `./hooks/` command rewritten to an absolute path on the copy
+route. A tree deployed before the filter keeps the strays, and the retraction
+sequence in `deployment/README.md` clears them through the deploy log.
 
 ### Copilot gets native delivery
 
