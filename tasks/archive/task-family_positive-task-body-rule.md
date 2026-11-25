@@ -41,7 +41,7 @@ negative only when it names a long tail no positive could enumerate. For a
 task body the catch-all equivalents are the legitimate negative homes listed
 in the Goal.
 
-Motivating example: the `tasks/deployment_relocate-state-to-home.md` body was
+Motivating example: the `tasks/archive/deployment_relocate-state-to-home.md` body was
 first written around "two problems" and "non-goals / what this does not do,"
 then reworked to lead with the actions ("Handle the two files according to
 what each one is", a "Guardrails" section, deferred alternatives kept brief).

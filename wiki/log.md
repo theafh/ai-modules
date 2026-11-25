@@ -1680,3 +1680,21 @@ agent ever had a reason to choose.
   caller; minor for a pure addition; patch for unchanged contracts — with the
   `0.15.x` history named as the case the distinction exists for. The harness
   package paragraph defers to that ladder instead of naming its own increments.
+
+## [2026-11-26 00:20] update | Move deploy state into the home directory and ship the Antigravity style rule
+
+The deployment script's per-machine state left the checkout: the tracked conf
+became a committed template, the uninstall manifest moved to
+`~/.ai_asset_deploy/deployed.log`, and Antigravity gained a generated style rule.
+
+- concepts/deployment-model.md: the definition and per-tool configuration
+  sections name `~/.ai_asset_deploy/config` and `~/.ai_asset_deploy/deployed.log`
+  with the template fallback, and `## Derived from` points at the template.
+- concepts/output-style-delivery-design.md: the Antigravity row records the rule
+  file at both scopes and the 24,000-byte cap, the built-rows paragraph names
+  Claude, Cursor, and Antigravity, and the marked-block section is retitled as
+  the unshipped alternative.
+- entities/google-antigravity.md: the four current surfaces, the modular rules
+  directory beside the four standalone global files, and the discard rule.
+- concepts/antigravity-global-roots.md: `### Everything else converges` names
+  the modular directory beside the four standalone files.
