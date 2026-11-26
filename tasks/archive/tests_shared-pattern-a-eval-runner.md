@@ -57,7 +57,7 @@ Live siblings consume this helper rather than inventing a second pool:
 - [guardrail_audit parallel evals](tests_guardrail-audit-parallel-evals.md)
 - [skill_doctor parallel evals](tests_skill-doctor-parallel-evals.md)
 - [wiki layer-2 runner dedup](../tests_wiki-layer2-runner-dedup.md)
-- [language_humanizer shared pool](../tests_language-humanizer-shared-pool.md)
+- [language_humanizer shared pool](tests_language-humanizer-shared-pool.md)
 - [git checkout and refresh runners](tests_git-eval-runner-parity.md)
 
 Host-instruction isolation for the language_humanizer worker and judge stays
