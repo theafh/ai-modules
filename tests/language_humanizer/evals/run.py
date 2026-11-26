@@ -20,8 +20,8 @@ micro-deployed through the deploy script into a scratch home, path-read from
 that deployed copy, never from the repository, and copied into the pass's
 sandbox record afterwards.
 
-Passes run **concurrently** (`--workers`, default
-`vendor.DEFAULT_PARALLEL_WORKERS`). Every pass owns its own isolated sandbox
+Passes run **concurrently** through the shared `tests/lib/eval_runner` pool
+(`--workers`, default `vendor.DEFAULT_PARALLEL_WORKERS`). Every pass owns its own isolated sandbox
 and writes only inside it, so the passes share nothing but the model endpoint,
 which caps useful concurrency without touching correctness. The deep
 sequential-only rule in `tests/CLAUDE.md` covers multi-turn repair loops that
@@ -74,7 +74,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import concurrent.futures
 import datetime
 import json
 import pathlib
@@ -93,6 +92,7 @@ WORKSPACE = HARNESS / "workspace"
 RESULTS = HARNESS / "results"
 
 sys.path.insert(0, str(THIS.parents[1] / "lib"))
+import eval_runner  # noqa: E402  (shared eval-runner pool in tests/lib)
 import micro_deploy  # noqa: E402  (shared micro-deployment helper in tests/lib)
 import vendor  # noqa: E402  (shared vendor helper in tests/lib)
 import worker_isolation  # noqa: E402  (shared helper in tests/lib)
@@ -502,36 +502,40 @@ def main() -> int:
     vendor.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
     micro_deploy.preflight_auth(resolved.vendor, resolved.bin, resolved.worker_model)
 
-    jobs = [(s, n) for s in scenarios for n in range(1, args.passes + 1)]
-    workers = max(1, min(args.workers, len(jobs)))
-    print(f"Running {len(jobs)} passes across {workers} concurrent worker(s)\n")
+    keys = [(s, n) for s in scenarios for n in range(1, args.passes + 1)]
+    workers = max(1, min(args.workers, len(keys)))
+    print(f"Running {len(keys)} passes across {workers} concurrent worker(s)\n")
+
+    def fault_verdict(scenario: str, n: int, exc: Exception) -> dict:
+        emit(f"  [{scenario} pass-{n}] ERROR, harness fault: {exc!r}")
+        return {
+            "scenario": scenario, "pass": n, "passed": False,
+            "worker_completed": False, "harness_error": repr(exc),
+            "assertions": {}, "integrity": {"harness_ran": False},
+            "delivered_words": None, "fixture_words": None,
+        }
+
+    def on_error(index: int, exc: Exception) -> dict:
+        scenario, n = keys[index]
+        return fault_verdict(scenario, n, exc)
+
+    def job_for(scenario: str, n: int):
+        return lambda _env: run_pass(scenario, n, run_dir, args, resolved)
 
     wall_start = time.time()
-    verdicts: dict[tuple[str, int], dict] = {}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = {
-            pool.submit(run_pass, s, n, run_dir, args, resolved): (s, n)
-            for s, n in jobs
-        }
-        for fut in concurrent.futures.as_completed(futures):
-            scenario, n = futures[fut]
-            try:
-                verdicts[(scenario, n)] = fut.result()
-            except Exception as exc:  # a harness fault, not a skill verdict
-                emit(f"  [{scenario} pass-{n}] ERROR, harness fault: {exc!r}")
-                verdicts[(scenario, n)] = {
-                    "scenario": scenario, "pass": n, "passed": False,
-                    "worker_completed": False, "harness_error": repr(exc),
-                    "assertions": {}, "integrity": {"harness_ran": False},
-                    "delivered_words": None, "fixture_words": None,
-                }
+    results_list = eval_runner.run_jobs(
+        [job_for(s, n) for s, n in keys],
+        workers=workers,
+        on_error=on_error,
+    )
+    verdicts: dict[tuple[str, int], dict] = dict(zip(keys, results_list))
     wall_s = time.time() - wall_start
 
     # Reassemble in submission order so the summary reads the same however the
     # pool happened to schedule the passes.
     results = {s: [verdicts[(s, n)] for n in range(1, args.passes + 1)]
                for s in scenarios}
-    print(f"\nAll {len(jobs)} passes done in {wall_s / 60:.1f} min wall-clock "
+    print(f"\nAll {len(keys)} passes done in {wall_s / 60:.1f} min wall-clock "
           f"({workers} concurrent)\n")
 
     summary = summarize(results, args.passes, run_settings(resolved, args.skip_judge))
