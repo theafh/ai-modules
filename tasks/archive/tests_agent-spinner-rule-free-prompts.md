@@ -2,8 +2,8 @@
 description: "Rewrite the agent_spinner eval prompts that state the rule their eval is named for, so each prompt asks only for the job and the eval shows the skill drives the behaviour."
 scope: tests/agent_spinner/evals
 created: 2026-11-14T16:08:26Z
-updated: 2026-11-26T11:29:26Z
-status: implemented
+updated: 2026-11-26T11:34:09Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -21,7 +21,7 @@ Each agent_spinner behavioural eval asks for the job and leaves the behaviour un
 
 A prompt may still state what a real user would say, such as a scope, a constraint, or a decision the user already made; the rewrite removes only the instruction that is the skill's job. `sweep_rewrite_hunk_blocks_sampling` showed the opposite failure, a prompt sentence that contradicted the expected behaviour, and it is fixed separately.
 
-[The vacuous-graders task](archive/tests_agent-spinner-vacuous-graders.md) also changes `changed_false_still_checked` and `blind_pass_by_prompt`. Land that task first, so each eval's grader can fail before its prompt stops carrying the rule.
+[The vacuous-graders task](tests_agent-spinner-vacuous-graders.md) also changes `changed_false_still_checked` and `blind_pass_by_prompt`. Land that task first, so each eval's grader can fail before its prompt stops carrying the rule.
 
 ## Approach
 
