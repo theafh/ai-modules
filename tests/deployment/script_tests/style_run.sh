@@ -506,6 +506,142 @@ grep -q '24000-byte per-file cap' "${SCRATCH}/oversize.out" ||
   fail "oversized antigravity rule must name the limit"
 [[ ! -e "$oversize_dest" ]] || fail "oversized antigravity rule must write nothing"
 
+# --- VS Code Copilot: generated instructions file at both scopes ---
+# The global run writes Copilot's own user-profile instructions root and merges
+# the editor-forwarding settings key; the project run writes the project
+# instructions directory and no settings key. Neither writes into the Claude
+# configuration tree.
+VS_LOG="${SCRATCH}/vscode.log"
+rm -f "$VS_LOG"
+VS_GLOBAL_FILE="${HOME_DIR}/.copilot/instructions/natural-language.instructions.md"
+VS_PROJECT_FILE="${PROJECT_DIR}/.github/instructions/natural-language.instructions.md"
+# The user settings file beside the prompts root, resolved the way the deploy
+# script resolves it.
+vscode_settings_file() {  # home
+  case "$OSTYPE" in
+    darwin*) printf '%s' "$1/Library/Application Support/Code/User/settings.json" ;;
+    *) printf '%s' "$1/.config/Code/User/settings.json" ;;
+  esac
+}
+VS_SETTINGS_FILE="$(vscode_settings_file "$HOME_DIR")"
+
+vs_global_dry="$(HOME="$HOME_DIR" DEPLOYED_ARTIFACTS_LOG="$VS_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type style --target vscode --dry-run)"
+vs_gen_count="$(printf '%s\n' "$vs_global_dry" | grep -c 'would-gen' || true)"
+assert_eq "$vs_gen_count" "1" "vscode global dry-run should report exactly one generated style file"
+printf '%s\n' "$vs_global_dry" | grep -q "$VS_GLOBAL_FILE" ||
+  fail "vscode global dry-run missing the user-profile instructions write"
+if printf '%s\n' "$vs_global_dry" | grep -q "${HOME_DIR}/.claude/"; then
+  fail "vscode global dry-run must not write into the Claude configuration tree"
+fi
+printf '%s\n' "$vs_global_dry" | grep -q 'would-merge' ||
+  fail "vscode global dry-run missing the settings-map merge"
+printf '%s\n' "$vs_global_dry" | grep -q "$VS_SETTINGS_FILE" ||
+  fail "vscode global dry-run must merge into the VS Code user settings file"
+printf '%s\n' "$vs_global_dry" | grep -q 'chat.instructionsFilesLocations' ||
+  fail "vscode global dry-run must name the settings-map key"
+printf '%s\n' "$vs_global_dry" | grep -Fq '"~/.claude/rules":false' ||
+  fail "vscode global dry-run must report the ~/.claude/rules false entry"
+[[ ! -e "${HOME_DIR}/.copilot" ]] || fail "vscode global dry-run wrote under HOME"
+
+vs_project_dry="$(HOME="$HOME_DIR" DEPLOYED_ARTIFACTS_LOG="$VS_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target vscode --dry-run)"
+vs_project_gen="$(printf '%s\n' "$vs_project_dry" | grep -c 'would-gen' || true)"
+assert_eq "$vs_project_gen" "1" "vscode project dry-run should report exactly one generated style file"
+printf '%s\n' "$vs_project_dry" | grep -q "$VS_PROJECT_FILE" ||
+  fail "vscode project dry-run missing the project instructions write"
+if printf '%s\n' "$vs_project_dry" | grep -q 'would-merge'; then
+  fail "vscode project dry-run must not merge a settings key"
+fi
+if printf '%s\n' "$vs_project_dry" | grep -vE '^(Config|Deploy log|Config source):' | grep -q "${HOME_DIR}/"; then
+  fail "vscode project dry-run must not resolve paths under HOME"
+fi
+
+# A sibling instructions file in the project root survives deploy and uninstall.
+VS_PROJECT_SIBLING="${PROJECT_DIR}/.github/instructions/keep-sibling.instructions.md"
+mkdir -p "${PROJECT_DIR}/.github/instructions"
+printf '%s\n' '---' 'applyTo: "**"' '---' 'pre-existing sibling instructions' > "$VS_PROJECT_SIBLING"
+VS_PROJECT_SIBLING_SAVED="${SCRATCH}/keep-sibling.instructions.md"
+cp "$VS_PROJECT_SIBLING" "$VS_PROJECT_SIBLING_SAVED"
+
+HOME="$HOME_DIR" DEPLOYED_ARTIFACTS_LOG="$VS_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$PROJECT_DIR" --type style --target vscode >/dev/null
+assert_file "$VS_PROJECT_FILE"
+# Project frontmatter scopes the rule to every file, so it is always-on.
+awk 'BEGIN{n=0} /^---$/{n++; next} n==1{print} n>=2{exit}' "$VS_PROJECT_FILE" | grep -q 'applyTo: "\*\*"' ||
+  fail "vscode project instructions file must carry applyTo: \"**\""
+if grep -qE 'keep-coding-instructions|force-for-plugin' "$VS_PROJECT_FILE"; then
+  fail "vscode instructions file must not carry Claude output-style frontmatter keys"
+fi
+vs_eb="$(tr '\n' ' ' < "$VS_PROJECT_FILE" | grep -o '<engineering_behavior>[^<]*</engineering_behavior>' || true)"
+[[ -n "$vs_eb" ]] || fail "vscode instructions file missing <engineering_behavior>"
+printf '%s\n' "$vs_eb" | grep -qi 'named prose surfaces' ||
+  fail "vscode engineering_behavior must name prose surfaces"
+printf '%s\n' "$vs_eb" | grep -qi "Copilot's defaults" ||
+  fail "vscode engineering_behavior must name Copilot's defaults"
+printf '%s\n' "$vs_eb" | grep -qi 'append' ||
+  fail "vscode engineering_behavior must state the harness only appends"
+if grep -qF "[chat.instructionsFilesLocations]" "$VS_LOG" 2>/dev/null; then
+  fail "vscode project deploy must not merge a settings key"
+fi
+cmp -s "$VS_PROJECT_SIBLING_SAVED" "$VS_PROJECT_SIBLING" ||
+  fail "vscode project deploy changed a pre-existing sibling instructions file"
+
+HOME="$HOME_DIR" DEPLOYED_ARTIFACTS_LOG="$VS_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --uninstall --project-dir "$PROJECT_DIR" --type style --target vscode >/dev/null
+[[ ! -e "$VS_PROJECT_FILE" ]] || fail "vscode project uninstall left the deployed instructions file"
+cmp -s "$VS_PROJECT_SIBLING_SAVED" "$VS_PROJECT_SIBLING" ||
+  fail "vscode project uninstall changed a pre-existing sibling instructions file"
+
+# Global real deploy: seed an unrelated entry in the settings map and an
+# unrelated key, so the merge has to keep both. The instructions file is the
+# body alone, with no frontmatter.
+mkdir -p "${VS_SETTINGS_FILE%/*}"
+printf '%s\n' '{"editor.fontSize":13,"chat.instructionsFilesLocations":{"/foreign/entry":true}}' > "$VS_SETTINGS_FILE"
+HOME="$HOME_DIR" DEPLOYED_ARTIFACTS_LOG="$VS_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type style --target vscode --clear-backups >/dev/null
+assert_file "$VS_GLOBAL_FILE"
+if grep -qx -- '---' "$VS_GLOBAL_FILE"; then
+  fail "vscode global instructions file must be the body alone, with no frontmatter"
+fi
+if grep -qE 'keep-coding-instructions|force-for-plugin' "$VS_GLOBAL_FILE"; then
+  fail "vscode global instructions file must not carry Claude output-style frontmatter keys"
+fi
+assert_eq "$(jq -c '.["chat.instructionsFilesLocations"]' "$VS_SETTINGS_FILE")" \
+  '{"/foreign/entry":true,"~/.claude/rules":false}' \
+  "vscode global deploy must add its entry and keep the foreign entry"
+assert_eq "$(jq -c '.["editor.fontSize"]' "$VS_SETTINGS_FILE")" "13" \
+  "vscode global deploy must leave every other settings key untouched"
+assert_eq "$(awk -F'\t' -v p="${VS_SETTINGS_FILE}[chat.instructionsFilesLocations]" '$1==p{print $5; exit}' "$VS_LOG")" \
+  '{"/foreign/entry":true}' \
+  "vscode global deploy must record the settings map's prior value"
+
+HOME="$HOME_DIR" DEPLOYED_ARTIFACTS_LOG="$VS_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --uninstall --global --type style --target vscode >/dev/null
+[[ ! -e "$VS_GLOBAL_FILE" ]] || fail "vscode global uninstall left the deployed instructions file"
+assert_eq "$(jq -c '.["chat.instructionsFilesLocations"]' "$VS_SETTINGS_FILE")" \
+  '{"/foreign/entry":true}' \
+  "vscode global uninstall must restore the settings map's recorded prior"
+assert_eq "$(jq -c '.["editor.fontSize"]' "$VS_SETTINGS_FILE")" "13" \
+  "vscode global uninstall must leave every other settings key untouched"
+
+# A fresh machine has no VS Code settings file at all: the deploy creates the
+# directory and the file, records @absent, and uninstall removes the key rather
+# than leaving an empty map.
+rm -rf "${VS_SETTINGS_FILE%/*}"
+HOME="$HOME_DIR" DEPLOYED_ARTIFACTS_LOG="$VS_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type style --target vscode --clear-backups >/dev/null
+assert_file "$VS_SETTINGS_FILE"
+assert_eq "$(jq -c '.["chat.instructionsFilesLocations"]' "$VS_SETTINGS_FILE")" \
+  '{"~/.claude/rules":false}' \
+  "vscode global deploy must create the settings file and map when both were absent"
+HOME="$HOME_DIR" DEPLOYED_ARTIFACTS_LOG="$VS_LOG" \
+  "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --uninstall --global --type style --target vscode >/dev/null
+assert_eq "$(jq -r 'has("chat.instructionsFilesLocations")' "$VS_SETTINGS_FILE")" "false" \
+  "vscode global uninstall must remove a key whose prior was @absent"
+jq -e . "$VS_SETTINGS_FILE" >/dev/null ||
+  fail "vscode settings file must stay valid JSON after uninstall"
+
 # --- Output-style shadow reporting and the global override caveat ---
 # A --global run reports a shadowing value in this deploy's own repository.
 # The staged sandbox root stands in for the checkout, so these scenarios read

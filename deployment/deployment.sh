@@ -2640,6 +2640,110 @@ generate_antigravity_style_rule() {
 }
 
 # ---------------------------------------------------------------------------
+# Generate a VS Code Copilot instructions file from a Claude output-style source.
+#
+# Copilot in VS Code reads *.instructions.md files and appends them to the
+# instructions it already has, so the style competes with default guidance
+# rather than displacing it. Strip the Claude frontmatter and rewrite
+# <engineering_behavior> so the wording rules govern prose surfaces, coding
+# stays with Copilot's defaults, and the harness only appends.
+#
+# The user-profile root (~/.copilot/instructions) takes the body alone. The
+# project root (<project>/.github/instructions) takes the same body under
+# frontmatter carrying applyTo: "**", so the rule is always-on rather than
+# pattern-limited. The scope argument selects the form.
+# ---------------------------------------------------------------------------
+generate_vscode_style_rule() {
+  local source="$1"
+  local dest="$2"
+  local target_id="$3"
+  local artifact_type="$4"
+  local scope="$5"
+
+  if [[ ! -f "$source" ]]; then
+    err "missing" "source not found: $source"
+    return 1
+  fi
+
+  local -a description_lines=()
+  local capture_description=false
+  local in_frontmatter=false frontmatter_done=false
+  local body=""
+  local line=""
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if ! $frontmatter_done && [[ "$line" == "---" ]]; then
+      if $in_frontmatter; then
+        in_frontmatter=false
+        frontmatter_done=true
+      else
+        in_frontmatter=true
+      fi
+      continue
+    fi
+
+    if $in_frontmatter; then
+      if $capture_description; then
+        if [[ -z "$line" || "$line" == [[:space:]]* ]]; then
+          description_lines+=("$line")
+          continue
+        fi
+        capture_description=false
+      fi
+      if [[ "$line" =~ ^description:[[:space:]]*(.*)$ ]]; then
+        description_lines=("${BASH_REMATCH[1]}")
+        capture_description=true
+      fi
+      continue
+    fi
+
+    body+="${line}"$'\n'
+  done < "$source"
+
+  body="${body%$'\n'}"
+
+  local vscode_engineering
+  vscode_engineering='<engineering_behavior>The wording rules govern the named prose surfaces. Coding and tool-use behaviour stay with Copilot'\''s defaults. This harness only appends.</engineering_behavior>'
+
+  if [[ "$body" == *"<engineering_behavior>"* ]]; then
+    body="$(
+      ENGINEERING_BEHAVIOR="$vscode_engineering" perl -0pe \
+        's/<engineering_behavior>.*?<\/engineering_behavior>/$ENV{ENGINEERING_BEHAVIOR}/s' \
+        <<< "$body"
+    )"
+  else
+    err "missing" "source has no <engineering_behavior>: $source"
+    return 1
+  fi
+
+  if $DRY_RUN; then
+    SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
+    info "would-gen" "$dest (vscode instructions file)"
+    return 0
+  fi
+
+  if [[ -L "$dest" || -f "$dest" ]]; then rm "$dest"; fi
+
+  if [[ "$scope" == "project" ]]; then
+    {
+      printf '%s\n' '---'
+      if [[ ${#description_lines[@]} -gt 0 ]]; then
+        emit_yaml_description "${description_lines[@]}"
+      fi
+      printf '%s\n' 'applyTo: "**"'
+      printf '%s\n\n' '---'
+      printf '%s\n' "$body"
+    } > "$dest"
+  else
+    printf '%s\n' "$body" > "$dest"
+  fi
+
+  ok "generated" "$dest (vscode instructions file)"
+  SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
+  append_deployed_artifact_log "$dest" "$target_id" "$artifact_type" "$source"
+}
+
+# ---------------------------------------------------------------------------
 # Report a settings file that shadows the outputStyle a run just merged.
 #
 # Claude resolves outputStyle from three settings files, where local project
@@ -3017,6 +3121,37 @@ install_for_app() {
               report_shadowed_output_style "${REPO_ROOT}/.claude/settings.json" "$active_style" "repo"
               info "caveat" "outputStyle '${active_style}' merged at user level; a project-level outputStyle in any repository overrides it — check .claude/settings.local.json in that project"
             fi
+          fi
+          ;;
+        vscode)
+          # VSCODE_COPILOT_DIR is ~/.copilot under --global and <project>/.github
+          # under --project-dir, so one destination expression serves both
+          # scopes. Copilot's own instructions root is the only write: the
+          # Claude tree is an adoption path, not a delivery target.
+          local dest_dir="${VSCODE_COPILOT_DIR}/instructions"
+          ensure_dir "$dest_dir"
+          local dest_path="${dest_dir}/${name}.instructions.md"
+          local style_scope="global"
+          if [[ -n "$PROJECT_DIR" ]]; then
+            style_scope="project"
+          fi
+          generate_vscode_style_rule "$source_abs" "$dest_path" "$app_id" "$type" "$style_scope"
+
+          # Under --global, narrow the editor-side adoption of the Claude rules
+          # folder: chat.instructionsFilesLocations maps a path to a boolean and
+          # a false removes a documented default, so this keeps ~/.claude/rules
+          # out of what the editor forwards to Agent Host harnesses. The merge
+          # is entry-grain, so every other location the user set survives, and
+          # its recorded prior restores on uninstall. A --project-dir run writes
+          # no settings key, because that file is the user's own VS Code
+          # settings outside the project.
+          if [[ -z "$PROJECT_DIR" ]]; then
+            local settings_file
+            settings_file="$(dirname "$VSCODE_PROMPTS_DIR")/settings.json"
+            ensure_dir "$(dirname "$settings_file")"
+            merge_settings_map_entries "$DEPLOYMENT_CONF" "$settings_file" \
+              "chat.instructionsFilesLocations" "$app_id" "$type" \
+              '{"~/.claude/rules": false}'
           fi
           ;;
         cursor)

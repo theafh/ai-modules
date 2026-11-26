@@ -66,18 +66,21 @@ style arm becomes the deploy script's first non-plugin asset source, so
 | Target | Deploy writes | Activation | Shape |
 | --- | --- | --- | --- |
 | Claude | `~/.claude/output-styles/<name>.md`, verbatim | merge `outputStyle` into the settings file of the deploy scope; Claude resolves the key from `.claude/settings.local.json`, then `.claude/settings.json`, then the user-level file, so a project-level value overrides the deploy | file plus key |
-| Copilot in VS Code | `~/.copilot/instructions/<name>.md`, body only | none, always on | file only |
+| Copilot in VS Code | generated instructions file at `~/.copilot/instructions/<name>.instructions.md` (global, body only) or `<project>/.github/instructions/<name>.instructions.md` (project, `applyTo: "**"`) | none, always on at either scope; a `--global` run also merges `~/.claude/rules: false` into `chat.instructionsFilesLocations` as an editor-forwarding settings write | file plus key at `--global`; file only at project scope |
 | OpenCode | a file under the global config tree, body only | add its path to the `instructions` array | file plus key; route decision open |
 | Codex | a generated instructions file under the Codex configuration tree, synthesized per the whole-prompt mechanism | merge `model_instructions_file` into the user configuration | file plus key, replacing |
 | Antigravity | a generated rule file at `~/.gemini/config/rules/<name>.md` (global) or `<project>/.agents/rules/<name>.md` (project), carrying `trigger: always_on` | none, always on | file only, appending; 24,000-byte per-file cap |
 | Cursor | `.cursor/rules/<name>.mdc` with `alwaysApply: true` | none | project scope; no print-mode-injecting global file path |
 
-Claude, Cursor, and Antigravity are the built rows. Claude shipped with the
-`style` artefact type, the repo-root source directory, and the prior-value
-restore, at both global and project scope. Cursor added a generated rule file
-under a project-dir deploy and no new machinery; a global run writes no Cursor
-file and reports that account User Rules take a manual paste. Antigravity added its
-rule file at both scopes. Every other row stays per-target delivery work, and
+Claude, Cursor, Antigravity, and Copilot in VS Code are the built rows. Claude
+shipped with the `style` artefact type, the repo-root source directory, and the
+prior-value restore, at both global and project scope. Cursor added a generated
+rule file under a project-dir deploy and no new machinery; a global run writes no
+Cursor file and reports that account User Rules take a manual paste. Antigravity
+added its rule file at both scopes. Copilot in VS Code added a generated
+instructions file at both scopes, needing no activation key at either, plus a
+`--global` settings-map merge that keeps the Claude rules folder out of what the
+editor forwards to Copilot. Every other row stays per-target delivery work, and
 each is a delivery decision rather than new machinery.
 
 Two rows carry a caveat. The Codex row records a decided route, since the
@@ -115,7 +118,9 @@ wording rules govern the named prose surfaces, that coding and tool use stay wit
 the harness's defaults, and that the harness only appends. Cursor's generator
 emits that clause with Cursor's defaults, and Antigravity's emits it with
 Antigravity's defaults inside a rule file carrying `trigger: always_on` and
-refuses content over the 24,000-byte per-file cap. Neither target needs a
+refuses content over the 24,000-byte per-file cap. Copilot in VS Code emits it
+with Copilot's defaults, under `applyTo: "**"` and the style's description at
+project scope and as the bare body at user scope. Neither target needs a
 placeholder in the source style, because the generation step produces its variant
 without one.
 
@@ -214,5 +219,7 @@ how much an append-only target loses.
   items. Their number and status track the delivery work rather than this record,
   so read the backlog for that state.
 - `deployment/deployment.sh`, whose Cursor style arm and
-  `generate_cursor_style_rule` make up the built Cursor row and whose Antigravity
-  arm and `generate_antigravity_style_rule` make up the built Antigravity row.
+  `generate_cursor_style_rule` make up the built Cursor row, whose Antigravity
+  arm and `generate_antigravity_style_rule` make up the built Antigravity row,
+  and whose VS Code arm and `generate_vscode_style_rule` make up the built
+  Copilot in VS Code row.

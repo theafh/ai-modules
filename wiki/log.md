@@ -1717,3 +1717,22 @@ everything it cannot.
 - comparisons/system-prompt-substitution-across-harnesses.md: the Claude row of
   `### What a global deploy has to write` names the user-level key and the
   project-level override.
+
+## [2026-11-26 02:54] update | Deploy the output style to Copilot in VS Code
+
+The deploy script gained a VS Code style arm: a generated instructions file at
+Copilot's own user-profile and project roots, plus a `--global` settings-map
+merge that keeps the Claude rules folder out of what the editor forwards.
+
+- entities/github-copilot-vs-code.md: `### Instruction roots` records the
+  `*.instructions.md` forms at both scopes, the `chat.instructionsFilesLocations`
+  default map, and the user root's cross-workspace reach with no general
+  precedence order across instruction files; `### Adoption of the Claude tree`
+  states that the instructions setting forwards to Agent Host harnesses
+  including Copilot while the hook setting does not configure Copilot discovery,
+  and that setting `~/.claude/rules` to `false` closes that route; the
+  verification dates and `## Derived from` name the 26 November 2026 sources.
+- concepts/output-style-delivery-design.md: the Copilot in VS Code row records
+  both destinations, the settled filename, and the `--global` settings write;
+  the built-rows paragraph names it among the shipped rows; the content-transform
+  section and `## Derived from` name its generator.

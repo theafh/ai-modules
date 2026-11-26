@@ -1,7 +1,7 @@
 ---
 title: GitHub Copilot in VS Code
 created: 2026-08-08
-updated: 2026-11-25
+updated: 2026-11-26
 type: entity
 tags: [copilot, agent, skill, plugin, hook, discovery]
 sources: [raw/notes/auto-check-open-weight-run-observations-2026-10-27.md]
@@ -24,9 +24,13 @@ custom-chat-modes, overview) and
 plus GitHub's own `docs.github.com/en/copilot/reference/hooks-reference` and
 `/concepts/agents/hooks`. The hook-loading contract and the settings switches
 were re-verified on 25 November 2026 against the same hooks page and against
-GitHub's hooks reference. The plugin and hook surfaces are both documented as
-preview and the mode file was renamed from `*.chatmode.md` to `*.agent.md`, so
-re-verify before relying on any of it.
+GitHub's hooks reference. The instruction-file forms, the default location map,
+and the editor-forwarding contract were verified on 26 November 2026 against
+`code.visualstudio.com/docs/agents/reference/custom-instructions-reference`,
+`/docs/agents/reference/ai-settings`, and
+`/docs/agent-customization/migrate-customizations`. The plugin and hook surfaces
+are both documented as preview and the mode file was renamed from
+`*.chatmode.md` to `*.agent.md`, so re-verify before relying on any of it.
 
 ## Two products share one user root
 
@@ -45,15 +49,26 @@ contract below has to be read as two overlapping specifications rather than one.
 Instructions are the always-on carrier, and they combine rather than compete.
 Copilot's own roots are `.github/copilot-instructions.md` at the workspace root,
 `*.instructions.md` files whose `applyTo` glob scopes them to matching files, an
-auto-detected workspace `AGENTS.md`, and `~/.copilot/instructions` for the user
-profile. The `chat.instructionsFilesLocations` setting adds further workspace
-locations.
+auto-detected workspace `AGENTS.md`, and the user profile, which reads
+`~/.copilot/copilot-instructions.md` for general guidance and
+`~/.copilot/instructions/**/*.instructions.md` for modular instructions. Project
+targeted instructions take the same form under
+`.github/instructions/**/*.instructions.md`, and a modular instruction file in
+either root takes the `<name>.instructions.md` filename (VS Code's custom
+instructions reference, read 26 November 2026). The
+`chat.instructionsFilesLocations` setting adds further search locations beside
+the roots listed above, and its documented default map already covers the
+workspace and user roots, with `.github/instructions`, `.claude/rules`,
+`~/.copilot/instructions`, and `~/.claude/rules` among them (VS Code's
+`ai-settings` reference, read 26 November 2026).
 
-The user-profile root applies across every workspace and sits at the top of the
-documented precedence, above repository and organization instructions. No
-settings key activates it, which is one moving part fewer than the Claude, Codex,
-and OpenCode global deposits each need, and it makes this the cheapest target to
-reach.
+The user-profile root applies across every workspace. Copilot combines
+applicable user and repository instructions without a general precedence order
+between instruction files, so the user root adds reach rather than outranking
+repository or organization guidance (VS Code's custom instructions reference,
+read 26 November 2026). No settings key activates it, which is one moving part
+fewer than the Claude, Codex, and OpenCode global deposits each need, and it
+makes this the cheapest target to reach.
 
 ### Hooks
 
@@ -135,10 +150,16 @@ That last one has a consequence worth stating plainly: a hook merged into
 `~/.claude/settings.json` for Claude fires in VS Code as well, whether or not
 anyone intended a second harness to run it.
 
-Unlike every other adopter here, VS Code offers per-path switches for its
-**Local** harness. `chat.hookFilesLocations` and `chat.instructionsFilesLocations`
-each map a path to a boolean, and setting one to `false` disables it even when it
-is a documented default. Those switches configure the Local harness only.
+Unlike every other adopter here, VS Code offers per-path switches over its
+instruction and hook locations. `chat.hookFilesLocations` and
+`chat.instructionsFilesLocations` each map a path to a boolean, and setting one
+to `false` disables it even when it is a documented default: `promptSourceFolders`
+in the editor's `config.ts` keeps a default folder only when
+`value[defaultFolder.path] !== false` (read at tag `1.142.0`). The two switches
+do not behave alike for Copilot. `chat.instructionsFilesLocations` configures
+instruction locations the editor discovers and forwards to Agent Host harnesses,
+including Copilot, per VS Code's `migrate-customizations` page (read 26 November
+2026), while `chat.hookFilesLocations` does not configure Copilot hook discovery.
 
 The hooks page, re-read on 25 November 2026, states three things that decide what
 a deploy can promise:
@@ -162,10 +183,12 @@ So no documented setting closes the Copilot harness's read of the repository
 Claude still fires in a VS Code session, and a deploy that ships its own Copilot
 hook config leaves that route open as well. The overlap is tolerable only because
 the guardrail denies idempotently: the same mutation is refused twice, not allowed
-once. The statement above names `chat.hookFilesLocations`; whether
-`chat.instructionsFilesLocations` reaches Copilot discovery the same way is
-**not verified** — the page's "Local editor settings such as …" wording suggests
-the class, but only the named key is documented.
+once. Instructions are the exception. VS Code forwards instruction files
+discovered in additional configured locations to Agent Host harnesses,
+including Copilot, so `chat.instructionsFilesLocations` does reach Copilot
+discovery and setting `~/.claude/rules` to `false` closes that rules-folder
+route for Copilot (VS Code's `migrate-customizations` page, read 26 November
+2026).
 
 Keep `github.copilot.chat.claudeAgent.enabled` separate in your head: it governs
 running Claude as a harness inside VS Code, not reading Claude's files.
@@ -230,5 +253,15 @@ when the model judges it relevant. Neither is standing.
   `/en/copilot/concepts/agents/hooks` for the CLI superset and the loading rules.
   Re-read on 25 November 2026 for the `version` field, the PascalCase `PreToolUse`
   alias and its snake_case payload, and `timeout` as an alias for `timeoutSec`.
+- `code.visualstudio.com/docs/agents/reference/custom-instructions-reference`,
+  `/docs/agents/reference/ai-settings`, and
+  `/docs/agent-customization/migrate-customizations`, read on 26 November 2026
+  for the instruction-file forms at both scopes, the `chat.instructionsFilesLocations`
+  default map, the no-general-precedence rule across instruction files, and the
+  editor-forwarding contract that reaches Copilot while `chat.hookFilesLocations`
+  does not configure Copilot hook discovery. The `false`-removes-a-default
+  mechanism was read from `promptSourceFolders` in
+  `microsoft/vscode` `src/vs/workbench/contrib/chat/common/promptSyntax/config/config.ts`
+  at tag `1.142.0`.
 - The `harness_portability` skill in this repository, before its August 2026
   split.
