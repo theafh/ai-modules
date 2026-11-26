@@ -51,18 +51,25 @@ Write only the paths being disabled, so entries the user set survive the edit.
 Because these are ordinary settings keys, a deploy step can merge them, unlike
 the Cursor equivalent.
 
-**These maps do not scope the Copilot harness.** The hooks page, re-read on
-25 November 2026, documents `chat.hookFilesLocations` under "Existing Local
-hooks" and states "Local editor settings such as `chat.hookFilesLocations` do not
-configure Copilot discovery". It also states that the Copilot harness reads
-inline hook settings in `.github/copilot/settings.json`,
-`.github/copilot/settings.local.json`, and `~/.copilot/settings.json`, plus
-repository `.claude/settings.json` and `.claude/settings.local.json`. A Claude
-hook therefore cannot be switched off for the Copilot harness from editor
-settings: ship a Copilot-native hook config instead and accept the possible
-duplicate run, which is harmless for a guard that denies idempotently. Whether
-`chat.instructionsFilesLocations` reaches the Copilot harness the same way is
-unverified; the documented statement names the hooks key.
+**The hooks map does not scope the Copilot harness; the instructions map does.**
+The hooks page, re-read on 25 November 2026, documents `chat.hookFilesLocations`
+under "Existing Local hooks" and states "Local editor settings such as
+`chat.hookFilesLocations` do not configure Copilot discovery". It also states
+that the Copilot harness reads inline hook settings in
+`.github/copilot/settings.json`, `.github/copilot/settings.local.json`, and
+`~/.copilot/settings.json`, plus repository `.claude/settings.json` and
+`.claude/settings.local.json`. A Claude hook therefore cannot be switched off for
+the Copilot harness from editor settings: ship a Copilot-native hook config
+instead and accept the possible duplicate run, which is harmless for a guard that
+denies idempotently.
+
+`chat.instructionsFilesLocations` behaves differently. The migration page, re-read
+on 26 November 2026, states that VS Code forwards instruction files discovered in
+additional configured locations to Agent Host harnesses **including Copilot**, and
+that an additional location supplements the harness's built-in locations without
+removing them. Setting a documented default such as `~/.claude/rules` to `false`
+therefore keeps that folder out of what the editor forwards to Copilot, and also
+stops it loading in the Local harness.
 
 **For third-party agent integration**, set
 `"github.copilot.chat.claudeAgent.enabled": false`. That removes the Claude

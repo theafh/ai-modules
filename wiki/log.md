@@ -1736,3 +1736,17 @@ merge that keeps the Claude rules folder out of what the editor forwards.
   both destinations, the settled filename, and the `--global` settings write;
   the built-rows paragraph names it among the shipped rows; the content-transform
   section and `## Derived from` name its generator.
+
+## [2026-11-26 04:05] update | Correct the VS Code instructions-map reach on two pages
+
+The VS Code output-style change proved that `chat.instructionsFilesLocations`
+reaches Copilot through the editor's forwarding, so two pages that stated the
+reverse are corrected.
+
+- concepts/foreign-directory-adoption.md: the two maps now part company at the
+  harness boundary — the hooks key scopes the Local harness only, while the
+  instructions key is forwarded to Agent Host harnesses including Copilot — with
+  the cost of disabling a documented default named.
+- procedures/isolating-vs-code-from-foreign-config.md: the rule and its paragraph
+  are split the same way, and the unverified sentence is replaced with the
+  forwarding statement from the migration page.

@@ -104,20 +104,29 @@ Claude Code compatibility and also stops `.agents/skills` discovery, which is a
 materially different trade for an operator who also runs Antigravity, because it
 scopes away that harness's native workspace skills in the same stroke.
 
-VS Code's are settings keys, and they scope the editor's **Local** harness only.
-`chat.hookFilesLocations` and `chat.instructionsFilesLocations` each map a path to
-a boolean, and a path set to `false` is disabled **including a documented
-default**. That is the finest-grained control in the set and it costs nothing
-else, unlike OpenCode's broad switch, but it does not reach the Copilot harness:
-the hooks page, re-read on 25 November 2026, documents
-`chat.hookFilesLocations` under "Existing Local hooks" and states that "Local
-editor settings such as `chat.hookFilesLocations` do not configure Copilot
-discovery". The Copilot harness reads inline hook settings in
+VS Code's are settings keys, and the two that matter here reach different
+harnesses. `chat.hookFilesLocations` and `chat.instructionsFilesLocations` each
+map a path to a boolean, and a path set to `false` is disabled **including a
+documented default**. That is the finest-grained control in the set and it costs
+nothing else, unlike OpenCode's broad switch.
+
+The two keys part company at the harness boundary. `chat.hookFilesLocations`
+scopes the editor's **Local** harness only: the hooks page, re-read on
+25 November 2026, documents it under "Existing Local hooks" and states that
+"Local editor settings such as `chat.hookFilesLocations` do not configure
+Copilot discovery". The Copilot harness reads inline hook settings in
 `.github/copilot/settings.json`, `.github/copilot/settings.local.json`, and
 `~/.copilot/settings.json`, and it reads repository `.claude/settings.json` and
 `.claude/settings.local.json` directly, so those two hook paths cannot be closed
-from editor settings at all. Whether `chat.instructionsFilesLocations` reaches
-Copilot's instruction discovery the same way is **not verified**. A third key,
+from editor settings at all.
+
+`chat.instructionsFilesLocations` does reach Copilot: the migration page, re-read
+on 26 November 2026, states that VS Code forwards files discovered in additional
+configured locations to Agent Host harnesses **including Copilot**, and that an
+additional location supplements the harness's built-in locations without removing
+them. The same entry therefore both keeps a folder out of what the editor
+forwards and, when it disables a documented default such as `~/.claude/rules`,
+stops that folder loading in the Local harness as well. A third key,
 `github.copilot.chat.claudeAgent.enabled`, is a different mechanism worth not
 confusing with these: it governs running Claude as a harness inside VS Code rather
 than reading Claude's files.
