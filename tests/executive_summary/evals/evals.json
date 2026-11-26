@@ -1,0 +1,33 @@
+{
+  "skill_name": "executive_summary",
+  "evals": [
+    {
+      "id": "policy_brief",
+      "prompt": "Summarize the document in source.md.",
+      "expected_output": "A continuous-prose executive summary at 10 to 15% of the source length that preserves the brief's problem, measures, evidence, costs, decisions, and recommendation, uses no bullet or numbered lists, invents no fact the source does not carry, and ends with a 1-to-10 self-rating and a justification sentence.",
+      "files": ["evals/fixtures/policy_brief/setup.sh"],
+      "expectations": [
+        "summary.md holds continuous prose with no bullet or numbered list markers.",
+        "The delivered word count is between 8% and 17% of the source word count.",
+        "The summary ends with a 1-to-10 self-rating and a justification sentence.",
+        "No forbidden term from forbidden.txt appears in the summary.",
+        "A refute-biased judge confirms the source's reasoning and order survive."
+      ],
+      "timeout": 600
+    },
+    {
+      "id": "technical_report",
+      "prompt": "Summarize the report in source.md for an executive reader.",
+      "expected_output": "A continuous-prose executive summary at 10 to 15% of the source length that preserves the report's purpose, setup, results, limitations, and conclusions, uses no bullet or numbered lists, invents no fact the source does not carry, and ends with a 1-to-10 self-rating and a justification sentence.",
+      "files": ["evals/fixtures/technical_report/setup.sh"],
+      "expectations": [
+        "summary.md holds continuous prose with no bullet or numbered list markers.",
+        "The delivered word count is between 8% and 17% of the source word count.",
+        "The summary ends with a 1-to-10 self-rating and a justification sentence.",
+        "No forbidden term from forbidden.txt appears in the summary.",
+        "A refute-biased judge confirms the source's reasoning and order survive."
+      ],
+      "timeout": 600
+    }
+  ]
+}

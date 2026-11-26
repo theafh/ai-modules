@@ -110,6 +110,13 @@ files.
   `tests/` exclusion from the default file set, the `SKILL.md` hand-off to
   skill_doctor's `discovery_safety.py`, the missing-script failure, and the
   `make lint` wiring.
+- **`executive_summary/`**: Pattern A. `script_tests/run.sh` proves the
+  grader's PASS direction and one FAIL direction for each deterministic
+  check: the 8-17% length window, the no-list-markers rule, the 1-to-10
+  self-rating, and the invented-term boundary. `evals/` holds two behavioral
+  evals over two fixtures, run through `evals/run.py` on the default Cursor
+  worker in the shared `tests/lib/eval_runner` pool with the deterministic
+  `grade.sh` plus the refute-biased `judge.py` for fidelity and ordering.
 - **`wiki/`**: Pattern B. Full Layer 1 (deterministic, `layer1/run.sh`
   prints its own scenario tally) + Layer 2 (every scenario in
   `layer2/evals.json`, each over that file's top-level `passes`
@@ -427,7 +434,7 @@ carry `tests/trigger_evals/` entries.
 | `format_markdown` | Needs no separate harness: its rules restate markdownlint, and `make lint` runs markdownlint over every tracked markdown file, so the standing gate enforces the contract on real artefacts. |
 | `format_python` | Needs no separate harness: its rules restate ruff, flake8, and pylint, none of which the repo's toolchain floor installs and none of which the repo enforces, so a behavioural eval would measure an external linter's rules rather than a repo contract. |
 | `harness_portability` | Needs no separate harness: it is a read-only advisory skill with no artefact output to grade, and `tests/agent_spinner/` declares it as a deployed artefact its evals load, so its guidance is exercised inside those behavioural evals. |
-| `executive_summary` | Coverage is owed as a behavioural harness: its output contract (a 10-15% length target, prose-only output, no added content) is deterministic enough to grade. A full harness is unbounded backfill beyond this change, so it is filed as [tests_executive-summary-harness.md](../tasks/tests_executive-summary-harness.md). |
+| `executive_summary` | Covered by `tests/executive_summary/`: two behavioral evals grade the 8-17% length window, prose-only output, the 1-to-10 self-rating, and the invented-term boundary deterministically, with a refute-biased judge for fidelity and ordering. |
 | `spr` | Coverage is owed as a behavioural harness: its output contract (one bullet per source paragraph, no numbered lists, no trailing punctuation, a 1-10 rating) is deterministic enough to grade. A full harness is unbounded backfill beyond this change, so it is filed as [tests_spr-harness.md](../tasks/tests_spr-harness.md). |
 
 ## Grader mechanics
