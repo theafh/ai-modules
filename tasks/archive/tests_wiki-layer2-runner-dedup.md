@@ -2,8 +2,8 @@
 description: Point wiki layer-2 at the shared eval-runner pool so Pattern B stops carrying a private copy of the parallel loop.
 scope: tests/wiki/layer2
 created: 2026-10-04T20:11:10Z
-updated: 2026-11-26T23:05:30Z
-status: implemented
+updated: 2026-11-26T23:22:00Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -31,9 +31,9 @@ micro-deploys the declared `ARTEFACTS` list (the wiki family skills,
 and the private `stage_named_agents` is gone. It does not use the Pattern A
 verdict cache, and it should not: multi-pass assertion rates are the measurement.
 
-This task consumes [the shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md).
+This task consumes [the shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md).
 Provenance and baseline-narrowing stay with
-[the wiki harness provenance task](archive/tests_wiki-harness-run-provenance.md).
+[the wiki harness provenance task](tests_wiki-harness-run-provenance.md).
 
 ## Approach
 
