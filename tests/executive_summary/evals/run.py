@@ -195,11 +195,15 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                 verdict = json.loads(verdict_path.read_text(encoding="utf-8"))
                 judge_ok = verdict.get("fidelity") == "pass" and verdict.get("order") == "pass"
 
-        passed = completed and grade_ok and judge_ok
+        read_ok = micro_deploy.read_checks_passed(
+            integrity, checkout_unread, harness_copy_unread)
+        passed = completed and grade_ok and judge_ok and read_ok
         verdict = {
             "eval_id": eval_id, "passed": passed, "worker_completed": completed,
             "artefacts_read_from_micro_deployment": integrity,
             "checkout_unread": checkout_unread,
+            "harness_copy_unread": harness_copy_unread,
+            "read_ok": read_ok,
             "grade_ok": grade_ok, "judge_ok": judge_ok, "judge_ran": judge_ran,
             "graded_at": datetime.datetime.now().isoformat(timespec="seconds"),
             "model": resolved.worker_model, "effort": resolved.worker_effort,

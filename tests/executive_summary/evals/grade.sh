@@ -41,10 +41,22 @@ check "summary.md exists and is non-empty" test -s "$summary"
 check "source.md exists and is non-empty" test -s "$source"
 
 if [[ -s "$summary" && -s "$source" ]]; then
-  # No bullet or numbered list markers at the start of a line.
-  if grep -nE '^[[:space:]]*(\(?[0-9]+[.)]|[-*+•·‣▪])[[:space:]]' "$summary" >/dev/null; then
+  # No bullet or numbered list markers at the start of a line. The scan reads
+  # the file as UTF-8 in Python so a multibyte bullet never depends on the
+  # inherited locale the way a POSIX bracket expression does.
+  markers="$(python3 - "$summary" <<'PY'
+import re, sys
+pattern = re.compile(r"^\s*(?:\(?\d+[.)]|[-*+\u2022\u00b7\u2023\u25aa])\s+")
+bad = []
+for n, line in enumerate(open(sys.argv[1], encoding="utf-8"), 1):
+    if pattern.match(line):
+        bad.append(f"{n}:{line.rstrip()}")
+print("\n".join(bad))
+PY
+)"
+  if [[ -n "$markers" ]]; then
     printf '  FAIL  no bullet or numbered list markers\n'
-    grep -nE '^[[:space:]]*(\(?[0-9]+[.)]|[-*+•·‣▪])[[:space:]]' "$summary" | head -5 | sed 's/^/        /'
+    printf '%s\n' "$markers" | head -5 | sed 's/^/        /'
     fail=1
   else
     printf '  PASS  no bullet or numbered list markers\n'

@@ -66,7 +66,7 @@ check "FAIL: a bullet list fails the prose check" bash -c "! \"$GRADE\" x \"$d\"
 
 # FAIL: a Unicode bullet marker.
 d="$(case_dir unicode_bullet)"
-{ good_summary; printf '\u2022 a bullet the contract forbids\n'; } > "$d/summary.md"
+{ good_summary; printf '\xe2\x80\xa2 a bullet the contract forbids\n'; } > "$d/summary.md"
 check "FAIL: a Unicode bullet fails the prose check" bash -c "! \"$GRADE\" x \"$d\" \"$d/response.txt\" >/dev/null"
 
 # FAIL: invented term.
