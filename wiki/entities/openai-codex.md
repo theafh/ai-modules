@@ -148,7 +148,7 @@ Resolved text is ordinary Markdown organised under named headings covering
 personality and writing style, how to talk to the user, how to format a final
 answer, editing and autonomy rules, and skill use. `# Destructive actions` is a
 heading some models carry rather than a universal member of the set: the
-`gpt-5.6` and `gpt-daybreak` models and the `codex-auto-review` model carry it,
+`gpt-5.6` and `gpt-reserve` models and the `codex-auto-review` model carry it,
 while the `gpt-6` family omits it (verified 26 November 2026 across the twelve
 models in the installed catalog). Both the heading set and the overall length
 vary by model, and neither is documented anywhere, so they are internal

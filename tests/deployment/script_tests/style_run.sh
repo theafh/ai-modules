@@ -1044,6 +1044,18 @@ printf '%s\n' "$c2_plain" | grep -qF "${C2_HOME}/.codex/config.toml" ||
 [[ ! -e "${C2_HOME}/.codex/instructions/natural-language.md" ]] ||
   fail "dry run must not write the generated file"
 
+# The same CODEX_BIN stub, without --dry-run, must write the file and name the
+# version the stub reported in its header.
+C2B_HOME="${CODEX_SCRATCH}/c2b-home"
+C2B_LOG="${CODEX_SCRATCH}/c2b.log"
+seed_codex_home "$C2B_HOME" "gpt-test"
+codex_run_bin "$C2B_HOME" "$C2B_LOG" "$CODEX_EMPTY_APPS" "$C2_STUB" --global --type style --target codex >/dev/null 2>&1 ||
+  fail "CODEX_BIN real deploy must succeed"
+C2B_FILE="${C2B_HOME}/.codex/instructions/natural-language.md"
+[[ -f "$C2B_FILE" ]] || fail "CODEX_BIN real deploy must write the generated file"
+grep -qF "Codex version: ${CODEX_STUB_VERSION}" "$C2B_FILE" ||
+  fail "CODEX_BIN real deploy must name the version the stub reported in the header"
+
 # --- HOME-bundle stub: real deploy, substitutions, untouched spans ---
 C3_HOME="${CODEX_SCRATCH}/c3-home"
 C3_LOG="${CODEX_SCRATCH}/c3.log"

@@ -4133,7 +4133,7 @@ remove_logged_path() {
         restore_toml_key "$json_file" "$json_key" "$prior_value"
         return $?
       fi
-      strip_toml_key "$json_file" "$json_key"
+      toml_strip_key "$json_file" "$json_key"
       return $?
     fi
     if [[ -n "$prior_value" ]]; then

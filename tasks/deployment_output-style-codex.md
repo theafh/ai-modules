@@ -2,7 +2,7 @@
 description: Deploy the output style to Codex by re-deriving per-model base instructions at deploy time, swapping the style-owned sections for the style prose, and pointing the instructions-file key at the result.
 scope: deployment
 created: 2026-08-07T21:39:03Z
-updated: 2026-11-26T05:09:36Z
+updated: 2026-11-26T05:44:27Z
 status: implemented
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -52,6 +52,16 @@ Refresh the wiki's account through the wiki skill family, rewriting three passag
 - Project-scoped deployment under `--project-dir`, which this task rejects outright rather than defers. A project `.codex/config.toml` can set the instructions-file key, so the rejection is a judgement rather than a limitation: a committed whole-slot replacement changes the operating instructions for everyone who works in that repository, not only the person who deployed it, and the generated text is pinned to one model and one Codex version so it is wrong for every contributor on a different one. Codex also loads project layers only for a trusted project, so the placement would silently do nothing until trust is granted. Skip the Codex style actions with a warning under `--project-dir`.
 - The additive alternative of writing a marked block into the Codex global rules file, which reaches a weaker outcome and is not what this task delivers.
 - The personality setting and the profile layer, neither of which can carry repository prose: the first is a deprecated compatibility setting whose `friendly` and `pragmatic` values no longer select a style, and the second needs a launch flag rather than a persisted key.
+
+## Implementation notes
+
+The machine activation the Acceptance requires is applied: `~/.ai_asset_deploy/config`
+carries `style:natural-language` under `#codex`, verified by a `--global --type style
+--target codex --dry-run` that reports the generated file and the
+`model_instructions_file` merge. The committed
+`deployment/ai_asset_deploy.conf.template` carries no `style:` line, so a fresh
+checkout activates nothing. A backup of the pre-change machine config sits at
+`~/.ai_asset_deploy/config.bak-before-codex-style`.
 
 ## Acceptance
 
