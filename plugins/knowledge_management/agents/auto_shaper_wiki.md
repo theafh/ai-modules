@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.19
+version: 1.11.20
 model: inherit
 background: false
 effort: high
@@ -410,9 +410,11 @@ have audited before, because the schema, taxonomy, or domain may have changed.
     `$WIKI_SKILL/references/raw_taxonomy.md` as on-demand references.
     The scaffold baseline comes from the three `diff -u` commands in
     `<scaffold_drift>`; read the relevant template section only when a
-    diff hunk needs interpretation, especially whole-section deletion
-    hunks where canonical drift must be distinguished from preserved
-    customization. Derive the raw subtree from the `mkdir` lines in
+    diff block needs interpretation, especially a diff block that
+    deletes a whole section where canonical drift must be distinguished
+    from preserved customization. A diff block is a contiguous block of
+    lines that differs between the wiki's file and the canonical
+    template. Derive the raw subtree from the `mkdir` lines in
     `init_wiki.sh`; read `raw_taxonomy.md` only when reporting or
     routing concrete raw files. The references are canonical for
     comparison only and are never edited.
@@ -672,7 +674,7 @@ the fix move.
       section, a single new bullet under a heading, a re-worded
       table cell, or a freshly added yaml field. The diff is the
       exhaustive change list; the categories below only describe how
-      to classify each hunk.
+      to classify each diff block.
 
       ```bash
       diff -u "$WIKI/SCHEMA.md" "$WIKI_SKILL/references/template_schema.md"
@@ -715,13 +717,13 @@ the fix move.
       is deliberately outside that slot. Every wiki the skill scaffolds
       ships it, and an owner who removes it has customized their wiki:
       treat its absence as preserved customization and leave it out,
-      rather than reading the `SCHEMA.md` diff hunk as drift and
+      rather than reading the `SCHEMA.md` diff block as drift and
       restoring the paragraph. Every other `SCHEMA.md` prelude
       difference stays classifiable drift.
     </lint_already_covers_prelude>
 
-    <hunk_classification>
-      Walk every hunk and classify:
+    <diff_block_classification>
+      Walk every diff block and classify:
 
       - **Canonical has content the wiki lacks** (a heading,
         paragraph, sentence, bullet, table row, enum entry, or yaml
@@ -750,7 +752,7 @@ the fix move.
         page-type enum entries, frontmatter fields, or `index.md`
         sections out of canonical sequence) → reorder per the
         canonical.
-    </hunk_classification>
+    </diff_block_classification>
 
     <configurable_zones>
       The wiki's content inside these is authoritative; only flag
@@ -777,8 +779,8 @@ the fix move.
         sweep of historical entries stay out of scope.
     </configurable_zones>
 
-    <common_hunk_kinds>
-      Common kinds of hunk the diff surfaces (these illustrate
+    <common_diff_block_kinds>
+      The kinds of diff block the comparison surfaces (these illustrate
       classification and are *not* a closed enumeration; the diff
       catches whatever these examples miss):
 
@@ -831,7 +833,7 @@ the fix move.
         nor `source_path:` is correct, not drift. The `source_path:`
         portability rule applies only to a repo-backed wiki; a wiki with no
         repo is local-only, so its paths are unconstrained.
-    </common_hunk_kinds>
+    </common_diff_block_kinds>
 
   </scaffold_drift>
 
@@ -1916,7 +1918,7 @@ affect the same file so each file is opened, read, and rewritten once.
     line merely absent from the template is the owner's, and judging it
     unused is no reason to drop it: content the owner wrote goes only
     when it contradicts canonical semantics, and then by surfacing it
-    for the user per `<hunk_classification>` rather than by deleting
+    for the user per `<diff_block_classification>` rather than by deleting
     it. The references are read-as-canonical, never edited.
   </scaffold_alignment_is_in_scope>
 
@@ -1926,7 +1928,7 @@ affect the same file so each file is opened, read, and rewritten once.
     and its canonical template enumerates every difference
     exhaustively, including fine-grained changes the agent's
     instructions do not name explicitly (one-line paragraphs, single
-    bullets, table cells, new yaml fields). Classify each hunk
+    bullets, table cells, new yaml fields). Classify each diff block
     against the rules in `assess`; do not rely on the
     categorical examples to bound the search.
   </drive_scaffold_check_from_diff>
@@ -1942,7 +1944,7 @@ affect the same file so each file is opened, read, and rewritten once.
     recent log once during orient, and build the canonical-reference map
     once). Re-read the schema mid-run only when a fix updates it (new
     tag, new custom field, new page type). Read canonical templates and
-    raw-reference material on demand when the corresponding diff hunk,
+    raw-reference material on demand when the corresponding diff block,
     raw-subtree issue, or routing report needs that specific section.
   </single_orientation_pass>
 

@@ -142,8 +142,8 @@ def main() -> int:
             "canonical read omits the Freshness bullet")
     require("Defer the \"Page thresholds\" figure" in read_canonical, "threshold read is not deferred")
     require("as on-demand references" in read_canonical, "templates are not on-demand")
-    require(re.search(r"read the relevant template section only when a\s+diff hunk needs interpretation", read_canonical),
-            "template reads are not hunk-scoped")
+    require(re.search(r"read the relevant template section only when a\s+diff block needs interpretation", read_canonical),
+            "template reads are not diff-block-scoped")
     require(re.search(r"`mkdir` calls in\s+`init_wiki\.sh`", raw_subtree),
             "raw subtree check does not derive from init_wiki.sh mkdir calls")
     require("quote only the relevant bucket descriptions" in raw_subtree,
