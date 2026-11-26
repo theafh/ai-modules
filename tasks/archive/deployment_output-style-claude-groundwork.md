@@ -2,7 +2,7 @@
 description: Track the natural-language output style in repo-root styles/, deploy to Claude as file plus outputStyle, and lay prior-value capture/restore groundwork for uninstall of a deployed configuration key.
 scope: deployment
 created: 2026-08-07T21:39:03Z
-updated: 2026-10-07T07:15:15Z
+updated: 2026-11-26T03:54:47Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

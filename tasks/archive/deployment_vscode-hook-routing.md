@@ -2,7 +2,7 @@
 description: Filter foreign configs out of the vscode hook route and ship a Copilot-schema hook config, leaving the Claude hook sources readable because no documented setting closes them for the Copilot harness.
 scope: deployment
 created: 2026-08-09T18:07:35Z
-updated: 2026-11-25T16:26:13Z
+updated: 2026-11-26T03:54:47Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
