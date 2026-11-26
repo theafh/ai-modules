@@ -2663,7 +2663,7 @@ report_shadowed_output_style() {
   [[ -f "$settings_file" ]] || return 0
 
   local shadow_value
-  shadow_value="$(jq -r 'if (type == "object") and has("outputStyle") then (.outputStyle | if type == "string" then . else tojson end) else empty end' "$settings_file" 2>/dev/null || true)"
+  shadow_value="$(jq -r 'if (type == "object") and has("outputStyle") then (.outputStyle | select(type == "string")) else empty end' "$settings_file" 2>/dev/null || true)"
   [[ -n "$shadow_value" ]] || return 0
   [[ "$shadow_value" != "$deployed_style" ]] || return 0
 

@@ -13,14 +13,24 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
-DEPLOY_SCRIPT="${REPO_ROOT}/deployment/deployment.sh"
 # Invoke the deploy script on the stock bash the floor targets.
 DEPLOY_BASH="/bin/bash"
-STYLE_SRC="${REPO_ROOT}/styles/natural-language.md"
 SCRATCH="$(mktemp -d)"
+# Stage a throwaway repository root under $SCRATCH. deployment.sh walks up from
+# its own directory to the first ancestor holding plugins/, so a staged copy
+# beside a stub plugins/ and the styles/ tree resolves REPO_ROOT inside the
+# sandbox. A --global run's "repo" context then reads the staged .claude
+# settings, never this checkout's.
+SANDBOX_ROOT="${SCRATCH}/repo"
+mkdir -p "${SANDBOX_ROOT}/deployment" "${SANDBOX_ROOT}/plugins"
+cp "${REPO_ROOT}/deployment/deployment.sh" "${SANDBOX_ROOT}/deployment/deployment.sh"
+cp "${REPO_ROOT}/deployment/ai_asset_deploy.conf.template" "${SANDBOX_ROOT}/deployment/ai_asset_deploy.conf.template"
+cp -R "${REPO_ROOT}/styles" "${SANDBOX_ROOT}/styles"
+DEPLOY_SCRIPT="${SANDBOX_ROOT}/deployment/deployment.sh"
+STYLE_SRC="${SANDBOX_ROOT}/styles/natural-language.md"
 # Every deploy here writes a scratch log, never the machine-wide manifest.
 DEPLOY_LOG="${SCRATCH}/deployed.log"
-CONF_TEMPLATE="${REPO_ROOT}/deployment/ai_asset_deploy.conf.template"
+CONF_TEMPLATE="${SANDBOX_ROOT}/deployment/ai_asset_deploy.conf.template"
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2
@@ -40,6 +50,21 @@ cleanup() {
   rm -rf "$SCRATCH"
 }
 trap cleanup EXIT
+
+# This harness stages its own repository root, so a run must never write this
+# checkout's .claude settings. Snapshot them here and assert at the end that
+# the deploy's "repo" context read the staged sandbox instead.
+repo_claude_snapshot() {
+  local f
+  for f in "${REPO_ROOT}/.claude/settings.local.json" "${REPO_ROOT}/.claude/settings.json"; do
+    if [[ -f "$f" ]]; then
+      cksum "$f"
+    else
+      printf 'absent %s\n' "$f"
+    fi
+  done
+}
+repo_claude_before="$(repo_claude_snapshot)"
 
 cd "$REPO_ROOT"
 
@@ -482,46 +507,13 @@ grep -q '24000-byte per-file cap' "${SCRATCH}/oversize.out" ||
 [[ ! -e "$oversize_dest" ]] || fail "oversized antigravity rule must write nothing"
 
 # --- Output-style shadow reporting and the global override caveat ---
-# The global scenarios stage this checkout's own .claude settings files, the
-# way the harness backs aside the fixtures it stages, and restore them on exit
-# so the working tree is left byte-identical.
-REPO_CLAUDE_DIR="${REPO_ROOT}/.claude"
+# A --global run reports a shadowing value in this deploy's own repository.
+# The staged sandbox root stands in for the checkout, so these scenarios read
+# and write $SANDBOX_ROOT/.claude and leave this checkout untouched; cleanup
+# removes the whole staged tree.
+REPO_CLAUDE_DIR="${SANDBOX_ROOT}/.claude"
 REPO_SETTINGS_LOCAL="${REPO_CLAUDE_DIR}/settings.local.json"
 REPO_SETTINGS="${REPO_CLAUDE_DIR}/settings.json"
-REPO_SETTINGS_LOCAL_SAVED="${SCRATCH}/repo-settings.local.json"
-REPO_SETTINGS_SAVED="${SCRATCH}/repo-settings.json"
-REPO_CLAUDE_DIR_EXISTED=false
-REPO_SETTINGS_LOCAL_EXISTED=false
-REPO_SETTINGS_EXISTED=false
-
-if [[ -d "$REPO_CLAUDE_DIR" ]]; then
-  REPO_CLAUDE_DIR_EXISTED=true
-fi
-if [[ -f "$REPO_SETTINGS_LOCAL" ]]; then
-  REPO_SETTINGS_LOCAL_EXISTED=true
-  cp "$REPO_SETTINGS_LOCAL" "$REPO_SETTINGS_LOCAL_SAVED"
-fi
-if [[ -f "$REPO_SETTINGS" ]]; then
-  REPO_SETTINGS_EXISTED=true
-  cp "$REPO_SETTINGS" "$REPO_SETTINGS_SAVED"
-fi
-
-restore_repo_settings() {
-  if [[ "$REPO_SETTINGS_LOCAL_EXISTED" == true ]]; then
-    cp "$REPO_SETTINGS_LOCAL_SAVED" "$REPO_SETTINGS_LOCAL"
-  else
-    rm -f "$REPO_SETTINGS_LOCAL"
-  fi
-  if [[ "$REPO_SETTINGS_EXISTED" == true ]]; then
-    cp "$REPO_SETTINGS_SAVED" "$REPO_SETTINGS"
-  else
-    rm -f "$REPO_SETTINGS"
-  fi
-  if [[ "$REPO_CLAUDE_DIR_EXISTED" == false ]]; then
-    rmdir "$REPO_CLAUDE_DIR" 2>/dev/null || true
-  fi
-}
-trap 'restore_repo_settings; cleanup' EXIT
 
 mkdir -p "$REPO_CLAUDE_DIR"
 
@@ -666,7 +658,9 @@ global_dry_shadow="$(run_global_style --dry-run)"
 assert_eq "$(diagnostic_lines "$global_real")" "$(diagnostic_lines "$global_dry_shadow")" \
   "global dry-run diagnostics must match the real run"
 
-# Leave the checkout as found before the harness exits.
-restore_repo_settings
+# The staged sandbox absorbed every "repo" context read; this checkout's own
+# .claude settings must be byte-identical to the snapshot taken at entry.
+assert_eq "$(repo_claude_snapshot)" "$repo_claude_before" \
+  "style harness must leave this checkout's .claude settings untouched"
 
 printf 'Style deployment regression passed\n'
