@@ -157,7 +157,7 @@ structure.
   decision below rules it out, so its absence is now intended rather than pending.
 - The instructions half of the same adoption. Switching `~/.claude/rules` off
   through `chat.instructionsFilesLocations` belongs with the instructions delivery
-  in [deployment_output-style-vscode.md](../deployment_output-style-vscode.md), which
+  in [deployment_output-style-vscode.md](deployment_output-style-vscode.md), which
   owns that configuration root.
 - Replacing the four per-branch filename tests with one declarative per-target
   allowlist. It is the better structure and it prevents this class of defect
@@ -241,7 +241,7 @@ this task first shipped does not close the Copilot harness's Claude hook route.
   `.claude/settings.json` files, so the native config is the route that works and
   the possible second guard run is harmless because the guard denies idempotently.
 - `merge_settings_map_entries` stays for the sibling
-  [deployment_output-style-vscode.md](../deployment_output-style-vscode.md), which
+  [deployment_output-style-vscode.md](deployment_output-style-vscode.md), which
   merges `chat.instructionsFilesLocations` through it. It merges at entry grain,
   records the map's whole prior value, and now normalizes a settings file that
   carries `//` comments or trailing commas through `strip_jsonc` before the jq
