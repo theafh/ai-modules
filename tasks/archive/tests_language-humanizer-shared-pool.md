@@ -2,8 +2,8 @@
 description: Point language_humanizer's already-parallel, isolated pool at the shared eval-runner helper without changing the five-pass measurement.
 scope: tests/language_humanizer/evals
 created: 2026-10-04T20:11:10Z
-updated: 2026-11-26T22:50:30Z
-status: implemented
+updated: 2026-11-26T22:53:00Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -24,10 +24,10 @@ copy of the pool.
 
 This runner already parallelizes (`vendor.DEFAULT_PARALLEL_WORKERS`) and
 deliberately skips the verdict cache because repeated draws are the
-measurement. [The isolation task](archive/tests_language-humanizer-worker-isolation.md)
+measurement. [The isolation task](tests_language-humanizer-worker-isolation.md)
 already runs each pass and the judge under `tests/lib/worker_isolation.py`; each
 pass now also runs through `tests/lib/micro_deploy.py` and records
-`checkout_unread`. [The shared Pattern A eval runner](archive/tests_shared-pattern-a-eval-runner.md)
+`checkout_unread`. [The shared Pattern A eval runner](tests_shared-pattern-a-eval-runner.md)
 shipped as `tests/lib/eval_runner.py`, so the pool can switch now.
 
 The `ai_editorial` plugin ships this skill. The isolated five-pass Cursor
