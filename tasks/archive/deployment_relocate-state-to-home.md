@@ -117,7 +117,7 @@ disallow:*legacy*
 
 The template is the generic starting point. Any per-tool rule a machine adds beyond these defaults is **that machine's local customization**, not a shared default, so it belongs in the home conf and not the template.
 
-**Ship order.** One live task consumes this conf and lands after this one: [the shadow-warning task](../deployment_warn-shadowed-output-style.md) reads it through `merge_json_key "$DEPLOYMENT_CONF" …` in the Claude style arm.
+**Ship order.** One live task consumes this conf and lands after this one: [the shadow-warning task](deployment_warn-shadowed-output-style.md) reads it through `merge_json_key "$DEPLOYMENT_CONF" …` in the Claude style arm.
 
 ### Validate the conf the script reads
 

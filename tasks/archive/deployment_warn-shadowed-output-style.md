@@ -2,8 +2,8 @@
 description: Warn on a style deploy when a settings file the run can read shadows the outputStyle just written, and state the override caveat on every global run for the repos it cannot read.
 scope: deployment
 created: 2026-08-10T09:56:32Z
-updated: 2026-11-25T23:47:44Z
-status: implemented
+updated: 2026-11-26T00:25:16Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -21,19 +21,19 @@ The split exists because silence has to stay meaningless: a run that inspected o
 
 ## Context
 
-The edit site is the `claude)` arm of the `style)` case in `deployment/deployment.sh`, whose activation half is the call `merge_json_key "$DEPLOYMENT_CONF" "${app_dir}/settings.json" "outputStyle"`. The tree that call writes into follows the run's scope: `CLAUDE_DIR="${PROJECT_DIR}/.claude"` under `--project-dir`, and `CLAUDE_DIR="${HOME_DIR}/.claude"` otherwise. This task lands after [the state-relocation task](archive/deployment_relocate-state-to-home.md), so that call reads the relocated conf in `$HOME` rather than an in-repo file.
+The edit site is the `claude)` arm of the `style)` case in `deployment/deployment.sh`, whose activation half is the call `merge_json_key "$DEPLOYMENT_CONF" "${app_dir}/settings.json" "outputStyle"`. The tree that call writes into follows the run's scope: `CLAUDE_DIR="${PROJECT_DIR}/.claude"` under `--project-dir`, and `CLAUDE_DIR="${HOME_DIR}/.claude"` otherwise. This task lands after [the state-relocation task](deployment_relocate-state-to-home.md), so that call reads the relocated conf in `$HOME` rather than an in-repo file.
 
-The sibling task [bash 3.2 floor](archive/deployment_bash-32-floor.md) has shipped and rewrote the same arm's `STYLE_MAP` lookup into an indexed-array read, so this task builds on that shipped shape rather than the one quoted here.
+The sibling task [bash 3.2 floor](deployment_bash-32-floor.md) has shipped and rewrote the same arm's `STYLE_MAP` lookup into an indexed-array read, so this task builds on that shipped shape rather than the one quoted here.
 
 `REPO_ROOT` is this repository's own checkout, not the operator's working directory. It starts from the script's own location and walks up until it finds a directory containing `plugins/`, under the comment beginning `Discover REPO_ROOT by walking up from SCRIPT_DIR`, so it resolves to the same checkout on every run whatever the cwd is. Anything keyed on it therefore inspects one fixed repository, which is why the global arm below is framed as a check of this checkout rather than as a scan of wherever the operator happens to be.
 
-The precedence fact this task rests on is recorded in the wiki on [Anthropic Claude Code](../wiki/entities/anthropic-claude-code.md) under `### Configuration roots` and on [Claude output style selection](../wiki/concepts/claude-output-style-selection.md) under `### The key and its precedence` and `### Every interactive route writes local scope`: project and local settings outrank the user-level key that the global mode sets, and running `/config` to choose an output style writes the pick to `.claude/settings.local.json` at local project scope. That asymmetry is the whole diagnostic gap: a style picked by hand sticks because the pick lands in the file that wins, while a deployed style looks ignored because its merge lands in the file that loses.
+The precedence fact this task rests on is recorded in the wiki on [Anthropic Claude Code](../../wiki/entities/anthropic-claude-code.md) under `### Configuration roots` and on [Claude output style selection](../../wiki/concepts/claude-output-style-selection.md) under `### The key and its precedence` and `### Every interactive route writes local scope`: project and local settings outrank the user-level key that the global mode sets, and running `/config` to choose an output style writes the pick to `.claude/settings.local.json` at local project scope. That asymmetry is the whole diagnostic gap: a style picked by hand sticks because the pick lands in the file that wins, while a deployed style looks ignored because its merge lands in the file that loses.
 
 Reporting and exit behaviour are already in place. The `warn()` helper takes a short label and a message and prints without touching any counter, and the script ends with `print_summary` and no error accounting, so an added warning leaves the run's exit status alone.
 
 Regression coverage for this artefact type lives in `tests/deployment/script_tests/style_run.sh`, which stages a scratch home tree and a scratch project and points `DEPLOYED_ARTIFACTS_LOG` at a scratch log inside that tree, so no check writes the machine manifest. New scenarios extend that harness rather than starting a second one.
 
-The arm being edited was built by the archived [output-style Claude groundwork](archive/deployment_output-style-claude-groundwork.md) task, whose Approach defines the two-placement deploy and the first-write prior-value capture inside `merge_json_key`. The shadow check only reads the shadowing files, so it changes neither the recorded prior nor the restore path.
+The arm being edited was built by the archived [output-style Claude groundwork](deployment_output-style-claude-groundwork.md) task, whose Approach defines the two-placement deploy and the first-write prior-value capture inside `merge_json_key`. The shadow check only reads the shadowing files, so it changes neither the recorded prior nor the restore path.
 
 ## Approach
 
