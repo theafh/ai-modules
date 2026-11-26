@@ -3,8 +3,8 @@
 
 This is the regression-test entrypoint for the wiki skill. Each invocation:
 
-1. Submits one worker per scenario to a ThreadPoolExecutor (default
-   `vendor.DEFAULT_PARALLEL_WORKERS`).
+1. Submits one worker per scenario to the shared `tests/lib/eval_runner`
+   pool (default `vendor.DEFAULT_PARALLEL_WORKERS`).
    Inside each worker, passes run sequentially:
      - Create an outside-checkout sandbox root via
        `worker_isolation.create_sandbox_root` and stage the scenario into it
@@ -52,7 +52,6 @@ for, and `--model ''` inherits the vendor CLI default.
 from __future__ import annotations
 
 import argparse
-import concurrent.futures
 import datetime
 import json
 import pathlib
@@ -87,6 +86,7 @@ WIKI_SCRIPTS = ["discover_wiki.sh", "init_wiki.sh", "lint.py", "compute_sha256.p
 
 sys.path.insert(0, str(WIKI_TESTS.parent / "lib"))
 sys.path.insert(0, str(THIS))
+import eval_runner  # noqa: E402  (shared eval-runner pool)
 import micro_deploy  # noqa: E402  (shared micro-deployment helper)
 import vendor  # noqa: E402  (shared vendor helper; tests/ is gitignored)
 import worker_isolation  # noqa: E402  (shared sandbox-root helper)
@@ -353,17 +353,20 @@ def main() -> int:
 
     workers = max(1, min(args.workers, len(scenarios)))
     print(f"Running {len(scenarios)} scenario(s) with {workers} parallel worker(s)")
-    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = {
-            pool.submit(run_scenario, s, passes, run_dir, resolved, args.timeout): s["id"]
-            for s in scenarios
-        }
-        for fut in concurrent.futures.as_completed(futures):
-            sid = futures[fut]
-            try:
-                fut.result()
-            except Exception as e:
-                print(f"  [{sid}] scenario failed: {e}", flush=True)
+
+    def job_for(scenario):
+        return lambda _env: run_scenario(
+            scenario, passes, run_dir, resolved, args.timeout)
+
+    def on_error(index: int, exc: Exception) -> None:
+        sid = scenarios[index]["id"]
+        print(f"  [{sid}] scenario failed: {exc}", flush=True)
+
+    eval_runner.run_jobs(
+        [job_for(s) for s in scenarios],
+        workers=workers,
+        on_error=on_error,
+    )
 
     # Normalize: extract report.md from response.txt where missing,
     # strip harness-noise from response.txt

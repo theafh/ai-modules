@@ -235,8 +235,10 @@ are `tests/task_auto_check/evals/run.py`, `tests/task/evals/run.py`,
 `tests/git_refresh/evals/run.py`, `tests/git_commit/evals/run.py`,
 `tests/git_review/evals/run.py`, `tests/guardrail_audit/evals/run.py`,
 `tests/skill_doctor/evals/run.py`, `tests/agent_spinner/evals/run.py`,
-`tests/git_auto_review/evals/run.py`, and
-`tests/language_humanizer/evals/run.py`. `task_auto_check` runs its serial
+`tests/git_auto_review/evals/run.py`,
+`tests/language_humanizer/evals/run.py`, and `tests/wiki/layer2/run.py`.
+`tests/wiki/layer2/run.py` submits one scenario per job, and a scenario's
+passes stay sequential inside that job. `task_auto_check` runs its serial
 nested-loop set, the list above, one job at a time after the isolated pool.
 `tests/task/evals/run.py` runs its Approach serial nested-loop set
 (`auto_check_boundary`, `fix_coherence_reconcile_escalated`,
@@ -279,8 +281,6 @@ starting and lets the running ones finish. Unit tests live in
 Runners that already default to `DEFAULT_PARALLEL_WORKERS` outside this
 helper (private pools, not yet on `eval_runner`):
 
-- `tests/wiki/layer2/run.py` — one outside-checkout sandbox root per pass;
-  passes of the same scenario stay sequential.
 - `tests/natural_language/evals/run.py` — one sandbox per pass.
 - `tests/trigger_evals/run.py` — one fresh worker directory per query run,
   outside the checkout and any git repository.
