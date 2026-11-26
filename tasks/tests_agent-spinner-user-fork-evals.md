@@ -2,9 +2,11 @@
 description: "Add agent_spinner evals for the forks the skill reserves for the user but no eval stages unprompted: contradicting checker returns, a rule written into an instruction file, and a completed task."
 scope: tests/agent_spinner/evals
 created: 2026-11-14T16:08:26Z
-updated: 2026-11-20T12:37:51Z
-status: ready
+updated: 2026-11-26T14:11:13Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Add evals for the user-reserved forks no eval stages unprompted
