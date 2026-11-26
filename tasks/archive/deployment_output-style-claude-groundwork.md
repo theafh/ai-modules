@@ -2,7 +2,7 @@
 description: Track the natural-language output style in repo-root styles/, deploy to Claude as file plus outputStyle, and lay prior-value capture/restore groundwork for uninstall of a deployed configuration key.
 scope: deployment
 created: 2026-08-07T21:39:03Z
-updated: 2026-11-26T03:54:47Z
+updated: 2026-11-26T06:15:19Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -32,7 +32,7 @@ Deployment mechanics that this task extends, all in `deployment/`:
 - `deployment/deployment.sh` sets `CLAUDE_DIR` to `${HOME}/.claude` under `--global` and to `${PROJECT_DIR}/.claude` under `--project-dir`. Claude reads both trees: an `output-styles/` directory and an `outputStyle` settings key exist at user level and at project level, and the project values outrank the user ones. A style arm written against `CLAUDE_DIR` rather than against a hardcoded home path therefore serves both scopes through one code path, and adding a project-mode skip would be extra code suppressing behaviour that path already provides.
 - Project styles load from every `.claude/output-styles/` between the working directory and the repository root, and since v2.1.178 the directory nearest the working directory wins when two of them define the same style name. A project deploy therefore needs no collision handling of its own beyond writing one file into the target project's own tree.
 
-Sibling tasks, each adding one target on top of this groundwork and each waiting for it to ship: [Cursor](deployment_output-style-cursor.md), [Codex](../deployment_output-style-codex.md), [OpenCode](../deployment_output-style-opencode.md), [Antigravity](deployment_output-style-antigravity.md), and [VS Code Copilot](deployment_output-style-vscode.md).
+Sibling tasks, each adding one target on top of this groundwork and each waiting for it to ship: [Cursor](deployment_output-style-cursor.md), [Codex](deployment_output-style-codex.md), [OpenCode](../deployment_output-style-opencode.md), [Antigravity](deployment_output-style-antigravity.md), and [VS Code Copilot](deployment_output-style-vscode.md).
 
 ## Approach
 
