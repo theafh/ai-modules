@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-11-25 | Total pages: 39
+> Last updated: 2026-11-26 | Total pages: 39
 
 ## Entities
 
@@ -39,7 +39,7 @@
 - [Skill load paths](concepts/skill-load-paths.md): what makes a skill load and route on Claude Code and Codex, read out of installed builds and confirmed for a Codex project skill by a live probe, and which repository rules are convention rather than harness constraint.
 - [Task lifecycle and status rules](concepts/task-lifecycle-and-status-rules.md): the task_* family's lifecycle: who writes each status, when ready returns to checked, task_implement's admission and done-gate, re-audit re-open, follow-up limits, and archive rules.
 - [The deployment model](concepts/deployment-model.md): the discovery roots, per-tool configuration, generated variants, scope precedence, the log-driven update replay, scope-limited uninstall, the prior-value restore on uninstall, and the entry-grain hook merge beside it.
-- [Verification surfaces for a shipped skill](concepts/verification-surfaces.md): how a shipped skill is verified: script tests as the default, opt-in behavioral evals, committed but undeployed harnesses, pinned model and effort, isolated workers, trigger coverage, and grader design.
+- [Verification surfaces for a shipped skill](concepts/verification-surfaces.md): how a shipped skill is verified: script tests as the default, opt-in behavioral evals, committed but undeployed harnesses, pinned model and effort, isolated workers, trigger coverage, grader design, and prompt independence.
 
 ## Comparisons
 

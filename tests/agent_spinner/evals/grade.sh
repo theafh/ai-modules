@@ -4094,8 +4094,15 @@ PY
   stamped_target_routed_to_owner)
     check "tasks/demo_cache.md stays byte-identical" \
       file_matches_staged "tasks/demo_cache.md"
+    # Test Integrity: a grader fix (anchoring to the dispatch). A row planned
+    # before dispatch and retired by a narrowing is `pending` or `dropped`, and
+    # the contract's width rule writes rows before dispatch, so neither is a
+    # writer that ran. The 2026-11-26 prompt rewrite produced a run that
+    # planned the writer row, dropped it after routing, and failed the old
+    # count. Evidence: tests/agent_spinner/workspace/run-20261126-103602/
+    # stamped_target_routed_to_owner. The property is no dispatched writer.
     check "no writer row targets the stamped path" \
-      bash -c "[[ \$(awk -F'\t' '\$5==\"tasks/demo_cache.md\" && \$6==\"writer\" {n++} END{print n+0}' \"$(roster_path)\") -eq 0 ]]"
+      bash -c "[[ \$(awk -F'\t' '\$5==\"tasks/demo_cache.md\" && \$6==\"writer\" && \$7!=\"dropped\" && \$7!=\"pending\" {n++} END{print n+0}' \"$(roster_path)\") -eq 0 ]]"
     # Test Integrity: a grader fix (broadening to substance). The eval's named
     # fact is a routing or fork record, so the case reads only routing-shaped
     # record types and requires the record's own text to name the path and the
@@ -4174,8 +4181,13 @@ routed_at = min(datetime.datetime.fromisoformat(r["at"]) for r in routes)
 brief_at = datetime.datetime.fromtimestamp(first, datetime.timezone.utc)
 sys.exit(0 if routed_at <= brief_at else 1)
 PY
+    # Test Integrity: a grader fix (accepting the hyphenated family form). The
+    # run named "the task-family writer" and the task hub's manual routes,
+    # which is the same property as "task family" and failed the old pattern.
+    # Evidence: tests/agent_spinner/workspace/run-20261126-103602/
+    # stamped_target_routed_to_owner.
     check "the report names the owning gate" \
-      report_has 'owning gate|task_(check|finish|audit|fix)|task family'
+      report_has 'owning gate|task[-_ ](check|finish|audit|fix|family)|task family'
     ;;
 
   committed_rule_deletion_surfaced)

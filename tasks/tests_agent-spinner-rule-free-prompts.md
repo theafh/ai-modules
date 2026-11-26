@@ -2,9 +2,11 @@
 description: "Rewrite the agent_spinner eval prompts that state the rule their eval is named for, so each prompt asks only for the job and the eval shows the skill drives the behaviour."
 scope: tests/agent_spinner/evals
 created: 2026-11-14T16:08:26Z
-updated: 2026-11-26T06:29:11Z
-status: ready
+updated: 2026-11-26T11:29:26Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Take the rule out of the agent_spinner eval prompts that state it

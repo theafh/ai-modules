@@ -1453,6 +1453,76 @@ check "beyond-brief: a ledger with no beyond_brief record fails the record check
   grading_has "$SCRATCH/brief-ledger.grading.txt" \
   "the ledger holds a beyond_brief record naming the find's path"
 
+# --- stamped_target_routed_to_owner -----------------------------------------
+# The 2026-11-26 prompt rewrite exposed two grader defects on this eval: a
+# writer row planned before dispatch and retired as `dropped` was counted as a
+# dispatched writer, and the report's own `task-family` wording was not read as
+# naming the owning gate. The four cases pin the re-anchored checks.
+STAMPED_EVAL=stamped_target_routed_to_owner
+
+stage_case "$STAMPED_EVAL" "$SCRATCH/stamped-dropped"
+stamped_dropped_proj="$CASE_PROJ"
+run_case_ledger "$stamped_dropped_proj" init --phase work --bound 60 \
+  --unit writer:demo-cache-write \
+  --unit-path writer:demo-cache-write=tasks/demo_cache.md \
+  --owned-target tasks/demo_cache.md:task:update >/dev/null
+run_case_ledger "$stamped_dropped_proj" dispose \
+  --narrowing "the stamped path routes to the task family before any writer" \
+  --rows writer:demo-cache-write >/dev/null
+printf 'Routed tasks/demo_cache.md to the owning gate task_check; no writer ran.\n' \
+  > "$stamped_dropped_proj/.agent_spinner/report.md"
+run_grade stamped-dropped "$STAMPED_EVAL" "$stamped_dropped_proj" "$response" >/dev/null
+check "stamped: a dropped planning row is not a dispatched writer" \
+  grading_pass "$SCRATCH/stamped-dropped.grading.txt" \
+  "no writer row targets the stamped path"
+
+stage_case "$STAMPED_EVAL" "$SCRATCH/stamped-dispatched"
+stamped_dispatched_proj="$CASE_PROJ"
+run_case_ledger "$stamped_dispatched_proj" init --phase work --bound 60 \
+  --unit writer:demo-cache-write \
+  --unit-path writer:demo-cache-write=tasks/demo_cache.md \
+  --owned-target tasks/demo_cache.md:task:update >/dev/null
+# The ledger admits a writer on an owned path only after an answered fork, so
+# the case stages that answer to reach the dispatch the check must reject. The
+# contract still forbids dispatching a writer on a family-owned path.
+run_case_ledger "$stamped_dispatched_proj" dispose --open-fork route:demo-cache \
+  --issue "Route tasks/demo_cache.md to the task family?" \
+  --question "May the run write tasks/demo_cache.md under the task gate?" \
+  --path tasks/demo_cache.md >/dev/null
+run_case_ledger "$stamped_dispatched_proj" dispose --id route:demo-cache \
+  --disposition surfaced >/dev/null
+run_case_ledger "$stamped_dispatched_proj" dispose --gate route:demo-cache \
+  --answered "Route it" >/dev/null
+run_case_ledger "$stamped_dispatched_proj" brief writer:demo-cache-write \
+  --target tasks/demo_cache.md --body "Write the deferral note." >/dev/null
+run_case_ledger "$stamped_dispatched_proj" dispatch writer:demo-cache-write >/dev/null
+printf 'Routed tasks/demo_cache.md to the owning gate task_check.\n' \
+  > "$stamped_dispatched_proj/.agent_spinner/report.md"
+run_grade stamped-dispatched "$STAMPED_EVAL" "$stamped_dispatched_proj" "$response" >/dev/null
+check "stamped: a dispatched writer row fails the no-writer check" \
+  grading_has "$SCRATCH/stamped-dispatched.grading.txt" \
+  "no writer row targets the stamped path"
+
+stage_case "$STAMPED_EVAL" "$SCRATCH/stamped-family"
+stamped_family_proj="$CASE_PROJ"
+mkdir -p "$stamped_family_proj/.agent_spinner"
+printf 'The task-family writer owns tasks/demo_cache.md; no writer ran.\n' \
+  > "$stamped_family_proj/.agent_spinner/report.md"
+run_grade stamped-family "$STAMPED_EVAL" "$stamped_family_proj" "$response" >/dev/null
+check "stamped: the hyphenated task-family form names the owning gate" \
+  grading_pass "$SCRATCH/stamped-family.grading.txt" \
+  "the report names the owning gate"
+
+stage_case "$STAMPED_EVAL" "$SCRATCH/stamped-nogate"
+stamped_nogate_proj="$CASE_PROJ"
+mkdir -p "$stamped_nogate_proj/.agent_spinner"
+printf 'Routed tasks/demo_cache.md; no writer ran.\n' \
+  > "$stamped_nogate_proj/.agent_spinner/report.md"
+run_grade stamped-nogate "$STAMPED_EVAL" "$stamped_nogate_proj" "$response" >/dev/null
+check "stamped: a report naming no gate fails the owning-gate check" \
+  grading_has "$SCRATCH/stamped-nogate.grading.txt" \
+  "the report names the owning gate"
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 if (( fail > 0 )); then
   printf 'failures:\n'

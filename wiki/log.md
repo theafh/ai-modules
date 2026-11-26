@@ -26,7 +26,7 @@
 > Body: list only files actually created or updated. Skip files that were
 > inspected, considered, or deliberately left unchanged, and do not narrate
 > decisions about what not to do. Aim for roughly 20 lines per entry.
-> When this file exceeds 500 entries, rotate: rename to log-YYYY.md — or to the first free log-YYYY-N.md when that name is taken — start fresh; the next audit cold-walks once and records a fresh baseline in the new log.
+> When this file exceeds 500 entries, rotate: rename to log-YYYY.md — or to the first free log-YYYY-N.md when that name is taken — start fresh; the new log carries no baseline, so the next audit reads every page in the wiki in full and records a fresh baseline only when it does, otherwise writing `unavailable`.
 
 ## [2026-08-08] create | Wiki initialized
 
@@ -1765,3 +1765,16 @@ build, which settled three stale passages on the entity page.
   profiles` records `personality` as a deprecated compatibility setting whose
   `friendly` and `pragmatic` values no longer select a style, sourced from the
   configuration reference's `personality` entry (25 November 2026).
+
+## [2026-11-26 10:55] update | Record prompt independence as a verification rule
+
+The `agent_spinner` eval-prompt rewrite produced one durable test-design rule:
+a prompt that states the rule its eval is graded on makes the eval vacuous,
+because the run complies with the prompt whether or not the skill carries the
+rule.
+
+- concepts/verification-surfaces.md: `### A prompt that states the rule
+  measures the prompt, not the skill` records the two-question selector, the
+  two worked boundaries, the requirement that an exact graded label live in the
+  skill, and the measure-before-and-after method that keeps a post-rewrite fail
+  attributable.

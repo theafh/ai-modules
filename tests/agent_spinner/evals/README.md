@@ -35,6 +35,110 @@ one sentence per line, and drops negated sentences before deciding, so a run
 that names a move in order to say it did not take that move is not scored as
 having taken it.
 
+## Prompt selection
+
+A prompt shows what the skill drives only when it asks for the job. A sentence
+that states the answer the run can derive from the staged tree, or the
+instruction the skill's own doctrine owns, is removed. A sentence stays when it
+states the user's request, a scope, a constraint, or a decision the user
+already made, and a pointer at material the request forces the run to read
+stays.
+
+The selector was re-run on 2026-11-26 over every prompt in `evals.json`, each
+read against its eval's `id` and expectations. It selected 44 prompts, listed
+below with the sentence each lost and the fact the run must now derive. The
+remaining prompts keep only the request plus facts a real user would state;
+the near-misses are recorded after the list.
+
+### Selected prompts
+
+- `failure_taxonomy`: removed "survey:alpha.md (a deliberate inability), survey:beta.md (boilerplate only), and survey:delta.md (a schema-valid placeholder that `accept` refuses); survey:gamma.md never arrived" and "Classify each non-result, say what you do about each". The run must read the staged returns and classify each non-result itself.
+- `uncited_clean_reroute`: removed "it cites only a heading and its receipt line is absent from the input version the row recorded" and "apply the skill's rules for an uncited clean verdict and for a receipt that does not match". The run must find the missing citation and the receipt mismatch in the return.
+- `confirmation_provenance`: removed "raised a finding from its own read", "was handed that report and checked it", and "including the provenance split and the weight each provenance carries". The run must read each return and split the provenances itself.
+- `one_remediation_round`: removed "check:verify.md failed at depth 3 and check:status.md passed" and "Remediate, re-check the repaired item once at no lower depth than its first check". The run must read the returns, find the failing item, and apply the one-round rule.
+- `decision_items_past_line_100`: removed "each carrying one decision item past its hundredth line, and each self-tally says it found nothing" and "give every decision item one disposition, name each ledger record id in the report, and report counts that match the records". The run must read every return in full and dispose each record.
+- `beyond_brief_find_reported`: removed "and reported a defect outside its brief" and "record what it found". The run must read the writer's return and notice the beyond-brief find.
+- `labelled_forks_all_relayed`: removed "with three labelled forks" and "report all three to the user". The run must read the return and relay every labelled fork.
+- `unlabelled_returns_joined_by_id`: removed "join the synthesis by identifier". The run must choose the join key from the records themselves.
+- `hollow_plan_blocks_writes`: removed "one placeholder task". The run must read the planner return and see the placeholder for itself.
+- `changed_false_still_checked`: removed "for a file that differs from the baseline". The run's own diff must establish the change the writer's flag denies.
+- `verdict_waits_for_open_checker`: removed "naming the pending checker row in your opening sentence". The run must place the pending row where the verdict rule puts it.
+- `aborted_writer_settled_from_diff`: removed "after it left its file different from the baseline" and "Settle the row from the diff". The run must find the aborted path changed and settle it from the net diff.
+- `declared_shape_switch_named`: removed "Record any shape switch". The run must record the switch the charter's obstacle forces.
+- `mandated_step_listed`: removed "CHARTER.md mandates ./lint.sh. Open the run with that step as a row before dispatch, run it". The run must read the charter and plan its mandated step as a row.
+- `readonly_checker_returns_by_message`: removed "relay its final message into accept". The run must apply the relay rule to the read-only role's return.
+- `verifier_rows_from_findings`: removed "carrying three findings" and "Make the verifier rows from the records before any verifier brief". The run must derive the row count from the accepted records.
+- `gate_scope_checked_before_dispatch`: removed "then check the gate's scope before dispatch". The run must run the gate-scope check the opening procedure owns.
+- `continuation_armed_once`: removed "Arm exactly one goal for this run, with the run directory in its objective". The run must arm the goal the run-state contract requires where the host offers one.
+- `unapproved_hunk_after_regeneration`: removed "Map its changed blocks against approved-edits.json with the ledger's approved-edit mapping, write the checker's brief from that list, and quote the hunk that maps to no id". The run must map the diff and surface the unmapped hunk.
+- `acceptance_presence_on_every_surface`: removed "which requires CACHE_MARKER on every page", "Write the checker's brief with one checklist line per acceptance item", and "report which pages lack the marker". The run must read `ACCEPTANCE.md` and build the checklist it defines.
+- `verifier_brief_carries_no_preference`: removed "Keep notes.md's preference out of the brief" and names the notes as material the brief is written against instead. The run must read the notes and keep their preference out of the brief on its own.
+- `documented_absence_stays_conditional`: removed "Build the run's preamble with tiered settled facts and the unverified-premises block, then report the answer as conditional with its probe". The run must tier the fact and carry the probe.
+- `placeholder_figure_held`: removed "Build the tiered preamble, answer with the figure as conditional, and write the checking brief over your report". The run must tier the placeholder figure and check its own report.
+- `wrapped_contrast_and_quotation`: removed "Keep the archived record byte-identical, keep the wrapped sentence's contrast intact, and give the claim-bearing page its own writer row". The run must keep the archive outside its scope and preserve the contrast through the edit.
+- `probe_positive_control`: removed "Run the ledger's counter check so each registered counter's positive control passes, then run bin/count.sh as a gate expecting a count". The run must fire each counter's positive control before trusting a count.
+- `remediator_refutes_false_finding`: removed "The accepted finding against docs/page.md is false. Re-derive it against the file, refute it with its settling span, and dispose of it as refuted. Change no file." The run must re-derive the finding and find it false.
+- `count_check_cannot_clear_meaning`: removed "write the checker's brief and raise the inverted requirement as a finding". The run must read the page and raise the inverted requirement itself.
+- `ruling_applies_to_class`: removed "in all three pages" and "Apply that ruling to all three instances, record one disposition per instance citing the ruling". The prompt names one instance, and the run must generalize the ruling and build the dispositions.
+- `survived_lenses_labelled_recall`: removed "report the provenance of the finding both lenses saw. Give it the contract's exact label, survived both lenses, recall-confirmed, and never label it confirmed or independent." The run must derive the label from the contract.
+- `known_false_control_caught`: removed "The verify batch's known-false control is the finding its quoted source contradicts" and "refute the control with its span, and add the batch's re-verification rows under a different framing". The run must catch the contradicted control and reframe the batch.
+- `surplus_read_proposes_removal`: removed "Report the restated rule to convert into a citation". The run must produce the conversion the surplus read exists for.
+- `unverified_band_sampled`: removed "Add sample rows and briefs for the minor band before the first verifier brief, then add the blocker verifier rows and report that band's sampled refutation rate". The run must sample the band the verification scope leaves out.
+- `judge_flaws_capped`: removed "confirm each return holds at most three fatal flaws each with a span". The run must apply the cap the judge return owes.
+- `checker_reads_return_by_path`: removed "Write the checker's brief naming the producer's return at .agent_spinner/returns/produce:spec.md by path, and keep paraphrase.md's paraphrase out of the brief. Report which edit id each hunk maps to." The run must write the brief from the return path and map the hunks.
+- `stamped_target_routed_to_owner`: removed "Record the routing in the run ledger and report the owning gate". The run must see the stamp and route the write.
+- `committed_rule_deletion_surfaced`: removed "put the decision it implies to me as an open fork in the ledger, and quote both rules in your decision packet. Change nothing until I answer." The run must see that the plan deletes committed rules and raise the fork.
+- `stamp_routed_on_any_rewrite`: removed "It carries its family's ready stamp, so route the write to the owning gate or to me before any writer runs". The run must read the stamp and route the write.
+- `baseline_kept_on_partial_read`: removed "Record each page you read in full as an accepted roster row before you finish" and "Leave the baseline marker alone". The run must record the reads and keep the marker outside its scope.
+- `baseline_lint_without_stash`: removed "then confirm the edit added no lint error by reading the baseline copy of the file by path. Do not run any version-control state command." The run must check the edit against a baseline copy without moving the repository state.
+- `reader_gets_snapshot`: removed "and have a checker read docs/page.md while you do it. Report the delta between the checker's snapshot and the final file". The run must give the paired check a snapshot and report the delta.
+- `role_depth_recorded`: removed "If the close reports the checker's recorded depth as below its producer's, record that as a flag with its reason", the requested/observed report list, "the final close needs the current tally block in report.md", and "Then close again". The run must read the close's refusal, flag the below-producer checker, write the report, and close again.
+- `blind_pass_by_prompt`: removed "keep my hypothesis out of its brief. Record only the hypothesis's hash on the row." The run must isolate the hypothesis and record its hash on the row.
+- `repair_list_keyed_on_severity`: removed "build the repair list from the accepted checker returns, create one repair row per failing item keyed on its lowest-id should-fix finding record, with its repair and re-check briefs". The run must key the repair list on the records.
+- `confirmed_class_swept_before_clean`: removed "create the class-sweep and recall-probe rows, run the sweep across every unit". The run must sweep the confirmed class before calling any unit clean.
+
+Two checks were re-anchored, both in `stamped_target_routed_to_owner`, because
+the rewrite revealed a surface-form read rather than a prompt-wording match:
+
+- `no writer row targets the stamped path` now reads the roster's state column
+  and ignores `pending` and `dropped` rows. A row planned before dispatch and
+  retired by a narrowing was never a writer that ran, and the contract's width
+  rule writes rows before dispatch, so the old count failed a compliant run
+  that planned the row and dropped it after routing. It reads the roster at
+  `run-20261126-103602/stamped_target_routed_to_owner` and passes 6 of 6 there
+  after the fix.
+- `the report names the owning gate` now accepts the hyphenated `task-family`
+  form beside `task family` and `task_<gate>`, because that run named "the
+  task-family writer" and the task hub's manual routes, which is the same
+  property. It reads the same run's report.
+
+`script_tests/grade_cases.sh` gained four cases for the pair: a dropped planning
+row passes, a dispatched writer row fails, the hyphenated family form passes,
+and a report naming no gate fails. Every other check these 44 evals carry reads
+a filesystem, roster, ledger, or report fact that the skill's own doctrine
+produces. Two checks read a label that a removed sentence also carried,
+`survived both lenses, recall-confirmed` and `blind by prompt`; both labels are
+stated verbatim in `SKILL.md` `<confirmation_provenance>` and
+`references/checks.md` item 9, so they measure the skill rather than the
+prompt.
+
+### Prompts kept request-only
+
+These near-misses were read against their expectations and kept, because the
+sentence states the user's own request, constraint, or decision rather than the
+skill's rule:
+
+- `probe_definitions_no_spawn`: "Tell me whether those three definitions are callable" is the user's question, and the eval grades the answer to it.
+- `roster_partial_stop`: "Stop the run after two items are done" is the user's stop decision.
+- `unanswered_gate_stops_with_packet`: the helper cap, the over-budget call, and the single-turn host are the user's conditions; the README note below records why each stays.
+- `sweep_rewrite_hunk_blocks_sampling`: the calibration answers are the user's, and its own note below records the separate fix.
+- `widening_needs_estimate_and_ask`: "put the widening to me before you take it" is a user constraint on that run.
+- `snapshot_search_positive_control`: the two quoted values are repository facts the request points at, not the rule the eval grades.
+- `cross_model_checker_recorded`: running the checker on a different model is the user's rigour choice.
+- `checker_spawned_through_role`: naming `auto_checker_spinner` is the user's instruction about which staged role to use.
+- `attached_body_reads_recipe`: "Name the matched recipe file in your opening announcement" asks for the evidence the attached-body mode exists to test.
+- `family_job_post_write_check` and `explicit_spinner_on_family_job`: the gate answers and the withheld approval are the user's.
+
 ## Signal per eval
 
 | Eval | Primary signal | Why that signal |
@@ -149,10 +253,13 @@ a grader broadening backed by a captured correct run; no check was weakened.
   `<capability_probe>` states the deployment-versus-callability rule but a run
   no longer mentioned the definitions unprompted, so the eval asks the question
   it grades.
-- `role_depth_recorded`: its prompt now writes the report before the final
-  close and names the tally-block requirement, because `close` condition 7
-  refuses while `report.md` lacks the current tally block. It answers no
-  pre-dispatch gate; the fixture stages the run mid-flight.
+- `role_depth_recorded`: its 2026-11-11 prompt wrote the report before the
+  final close and named the tally-block requirement, because `close` condition
+  7 refuses while `report.md` lacks the current tally block. The 2026-11-26
+  prompt rewrite removed that instruction with the rest of the stated rule;
+  `## Prompt selection` records the removal, and the recorded results below
+  carry the verdict the shorter prompt earned. It answers no pre-dispatch
+  gate; the fixture stages the run mid-flight.
 - `judgement_surfaced`: its prompt is unchanged. Its fixture's `NOTES.txt` now
   adds "Nobody has decided whether the legacy section should be removed.", so
   the removal's undecided state is a repository fact rather than an inference
@@ -1163,3 +1270,116 @@ per-artifact fan-out and states that no recipe matched, all five note files
 exist, every page stays byte-identical, and no brief names a recipe file. The
 width, roster, and repair behaviour is outside this task's selector, probe, and
 recipe-definition subject, so the grader was left unchanged.
+
+### 2026-11-26, Cursor CLI 2026.11.13-eacade1, model `auto` — the rule-free prompts
+
+The change removes the rule each selected eval is named for from its prompt, so
+the run must reach the graded behaviour from the skill. Every selected eval was
+measured twice on the default vendor, model `auto`, at 4 workers and a
+1800-second bound: before the rewrite, to establish which verdicts were already
+red, and after it, so a post-rewrite fail is attributable to the prompt rather
+than to a pre-existing gap. The pre-rewrite runs are
+`../workspace/run-20261126-074435`, `run-20261126-075315`, `run-20261126-081203`,
+and `run-20261126-082435`, with the three evals that run lost to a shutdown
+re-measured in `run-20261126-102146`; the post-rewrite run is
+`../workspace/run-20261126-103602`.
+
+| Eval | Before | After |
+| --- | --- | --- |
+| `aborted_writer_settled_from_diff` | 3/4 fail | 3/4 fail |
+| `acceptance_presence_on_every_surface` | 9/9 pass | 9/9 pass |
+| `baseline_kept_on_partial_read` | 2/4 fail | 4/4 pass |
+| `baseline_lint_without_stash` | 4/5 fail | 5/5 pass |
+| `beyond_brief_find_reported` | 5/5 pass | 5/5 pass |
+| `blind_pass_by_prompt` | 5/5 pass | 1/5 fail |
+| `changed_false_still_checked` | 3/3 pass | 3/3 pass |
+| `checker_reads_return_by_path` | 5/5 pass | 5/5 pass |
+| `committed_rule_deletion_surfaced` | 5/5 pass | 3/5 fail |
+| `confirmation_provenance` | 7/7 pass | 7/7 pass |
+| `confirmed_class_swept_before_clean` | 8/8 pass | 8/8 pass |
+| `continuation_armed_once` | 1/3 fail | 1/3 fail |
+| `count_check_cannot_clear_meaning` | 5/5 pass | 5/5 pass |
+| `decision_items_past_line_100` | 7/8 fail | 7/8 fail |
+| `declared_shape_switch_named` | 2/4 fail | 4/4 pass |
+| `documented_absence_stays_conditional` | 3/6 fail | 3/6 fail |
+| `failure_taxonomy` | 6/9 fail | 6/9 fail |
+| `gate_scope_checked_before_dispatch` | 5/5 pass | 4/5 fail |
+| `hollow_plan_blocks_writes` | 6/7 fail | 6/7 fail |
+| `judge_flaws_capped` | 6/6 pass | 6/6 pass |
+| `known_false_control_caught` | 5/6 fail | 5/6 fail |
+| `labelled_forks_all_relayed` | 6/6 pass | 6/6 pass |
+| `mandated_step_listed` | 3/3 pass | 3/3 pass |
+| `one_remediation_round` | 7/9 fail | 5/9 fail |
+| `placeholder_figure_held` | 3/7 fail | 3/7 fail |
+| `probe_positive_control` | 9/9 pass | 9/9 pass |
+| `reader_gets_snapshot` | 4/5 fail | 4/5 fail |
+| `readonly_checker_returns_by_message` | 5/5 pass | 5/5 pass |
+| `remediator_refutes_false_finding` | 5/5 pass | 5/5 pass |
+| `repair_list_keyed_on_severity` | 12/12 pass | 6/12 fail |
+| `role_depth_recorded` | 11/11 pass | 11/11 pass |
+| `ruling_applies_to_class` | 3/6 fail | 3/6 fail |
+| `stamp_routed_on_any_rewrite` | 4/4 pass | 4/4 pass |
+| `stamped_target_routed_to_owner` | 6/6 pass | 4/6 fail (6/6 re-graded) |
+| `surplus_read_proposes_removal` | 3/3 pass | 3/3 pass |
+| `survived_lenses_labelled_recall` | 4/4 pass | 4/4 pass |
+| `unapproved_hunk_after_regeneration` | 4/4 pass | 4/4 pass |
+| `uncited_clean_reroute` | 7/8 fail | 6/8 fail |
+| `unlabelled_returns_joined_by_id` | 4/4 pass | 4/4 pass |
+| `unverified_band_sampled` | 2/3 fail | 1/3 fail |
+| `verdict_waits_for_open_checker` | 2/3 fail | 3/3 pass |
+| `verifier_brief_carries_no_preference` | 3/3 pass | 3/3 pass |
+| `verifier_rows_from_findings` | 1/3 fail | 3/3 pass |
+| `wrapped_contrast_and_quotation` | 6/6 pass | 6/6 pass |
+
+Five evals regressed from pass to fail. Each is recorded here as evidence that
+the skill does not yet drive that behaviour from the request alone, with the
+failing check named, and none was reworded back into its prompt:
+
+- `blind_pass_by_prompt` (1 of 5): `no brief carries the hypothesis text`, `the
+  blind brief's permits paths name no hypothesis input`, `the blind row's input
+  versions hold the withheld text's hash`, and `the report labels the pass
+  blind by prompt`. The run treated the ask as a read-only diagnostic, spent
+  one check pass, and put the hypothesis in the brief; it never built a blind
+  pass or recorded the withheld hash. The skill's `<selector>` sends a
+  read-only diagnostic to the orchestrator's own reads, so the blind-derivation
+  rule never fired.
+- `committed_rule_deletion_surfaced` (3 of 5): `the report quotes the first
+  committed rule` and `the report quotes the second committed rule`. The run
+  raised a fork and left the spec byte-identical, but its packet quoted the
+  PLAN sentence and the request, never the two rules the deletion would remove.
+- `gate_scope_checked_before_dispatch` (4 of 5): `the report names the
+  gate-scope check`. The gate line recorded the planted hit and dropped the
+  run-directory findings, but the report named only the plant hit and never the
+  drop.
+- `repair_list_keyed_on_severity` (6 of 12): `exactly one repair row targets
+  spec/alpha.md`, `the repair row carries the writer role`, `the repair row
+  carries the repair kind`, `the repair row belongs to spec/alpha.md`, `the
+  repair row carries a remediator brief`, and `exactly one repair brief
+  exists`. The run read "Change no artifact" as forbidding the repair list, so
+  it reported the findings unrepaired instead of building the rows the
+  artifact-repair recipe fixes from the accepted checker returns.
+- `stamped_target_routed_to_owner` (4 of 6): both failures were grader surface
+  form, and the two re-anchored checks in `## Prompt selection` pass 6 of 6
+  when the captured run is re-graded.
+
+Two evals that were already failing changed which checks fail. Neither verdict
+is evidence about the rewrite, and the new failing checks are recorded so the
+next reader sees the current state:
+
+- `one_remediation_round` (7/9 to 5/9): now `docs/verify.md remediated`,
+  `exactly one re-check row at no lower depth than the first check`, `states
+  exactly one remediation round`, and `states that no second round follows`.
+  The run disposed the failing item without remediating it.
+- `uncited_clean_reroute` (7/8 to 6/8): now `names the missing citation as the
+  reason` and `routes the heading-only clear back`. The run re-invoked the
+  check once to correct the receipt missing from the recorded input version,
+  then cleared the page; it never named the missing citation as the reason or
+  routed the heading-only clear back for a re-check.
+
+Five evals moved from fail to pass without any skill change:
+`baseline_kept_on_partial_read`, `baseline_lint_without_stash`,
+`declared_shape_switch_named`, `verdict_waits_for_open_checker`, and
+`verifier_rows_from_findings`. The shorter prompt left the run to the doctrine
+it now has to read, and the run followed it. `role_depth_recorded` passes 11 of
+11 with the tally-block instruction removed, so `close` condition 7 carried the
+requirement the 2026-11-11 prompt used to state.

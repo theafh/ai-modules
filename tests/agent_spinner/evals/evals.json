@@ -220,7 +220,7 @@
     {
       "id": "failure_taxonomy",
       "skill": "agent_spinner",
-      "prompt": "Four survey helpers were dispatched, one per page under docs/, with a four-minute bound each. Their returns are in .agent_spinner/returns/: survey:alpha.md (a deliberate inability), survey:beta.md (boilerplate only), and survey:delta.md (a schema-valid placeholder that `accept` refuses); survey:gamma.md never arrived. Classify each non-result, say what you do about each, and report the run.",
+      "prompt": "Four survey helpers were dispatched, one per page under docs/, with a four-minute bound each. Their returns are in .agent_spinner/returns/. Report the run.",
       "expected_output": "survey:alpha is a deliberate self-reported inability that spends no retry and routes to the user; survey:beta is a boilerplate-only spawn glitch and survey:gamma is an absent return, each earning exactly one identical-prompt re-invocation; survey:delta is a schema-valid placeholder return that `accept` refuses, recorded as a rejected row. All four are reported separately in the dispatched-against-returned arithmetic.",
       "files": [
         "evals/fixtures/failure_taxonomy/setup.sh"
@@ -294,7 +294,7 @@
     {
       "id": "uncited_clean_reroute",
       "skill": "agent_spinner",
-      "prompt": ".agent_spinner/returns/check:deploy.md is the checking pass's clean verdict for docs/deploy.md; it cites only a heading and its receipt line is absent from the input version the row recorded. Accept it and apply the skill's rules for an uncited clean verdict and for a receipt that does not match. Report the run.",
+      "prompt": ".agent_spinner/returns/check:deploy.md is the checking pass's clean verdict for docs/deploy.md. Accept it and report the run.",
       "expected_output": "The clean verdict cites only a heading, so the run routes it back for re-checking rather than accepting it, and `accept` leaves the row in violation for the receipt that is absent from the recorded input version.",
       "files": [
         "evals/fixtures/uncited_clean_reroute/setup.sh"
@@ -384,7 +384,7 @@
     {
       "id": "confirmation_provenance",
       "skill": "agent_spinner",
-      "prompt": ".agent_spinner/returns/survey:verify.md raised a finding from its own read. .agent_spinner/returns/check:verify-check.md was handed that report and checked it. Accept both returns and report the run, including the provenance split and the weight each provenance carries.",
+      "prompt": "Two returns are staged in .agent_spinner/returns/: survey:verify.md and check:verify-check.md. Accept both and report the run.",
       "expected_output": "The report marks the survey pass's finding independently surfaced and the checking pass's non-refutation recall-confirmed, and says a decision resting only on recall-confirmed findings carries less weight.",
       "files": [
         "evals/fixtures/confirmation_provenance/setup.sh"
@@ -409,7 +409,7 @@
     {
       "id": "one_remediation_round",
       "skill": "agent_spinner",
-      "prompt": "Two checking passes have returned in .agent_spinner/returns/. check:verify.md failed at depth 3 and check:status.md passed. Remediate, re-check the repaired item once at no lower depth than its first check, and report the run.",
+      "prompt": "Two checking passes have returned in .agent_spinner/returns/. Continue the run and report it.",
       "expected_output": "Only docs/verify.md enters repair, it enters once, one re-check follows at no lower depth than the first check, no second repair round runs, and the report marks the repaired output unverified end to end.",
       "files": [
         "evals/fixtures/one_remediation_round/setup.sh"
@@ -607,7 +607,7 @@
     {
       "skill": "agent_spinner",
       "id": "decision_items_past_line_100",
-      "prompt": "Three survey returns are staged in the open run, each carrying one decision item past its hundredth line, and each self-tally says it found nothing. Accept them, give every decision item one disposition, name each ledger record id in the report, and report counts that match the records.",
+      "prompt": "Three survey returns are staged in the open run. Accept them and report the run.",
       "expected_output": "The run imports one ledger record per decision item, gives each one disposition, names every decision id in the report, and reports counts that match the records rather than the self-tallies.",
       "files": [
         "evals/fixtures/decision_items_past_line_100/setup.sh"
@@ -629,7 +629,7 @@
     {
       "skill": "agent_spinner",
       "id": "beyond_brief_find_reported",
-      "prompt": "A writer returned on docs/alpha.md and reported a defect outside its brief. Accept the return, record what it found, and report the run.",
+      "prompt": "A writer returned on docs/alpha.md. Accept the return and report the run.",
       "expected_output": "The ledger holds the beyond-brief find in the shape the shipped ledger supports, and the report's beyond-brief part quotes the defect with its path.",
       "files": [
         "evals/fixtures/beyond_brief_find_reported/setup.sh"
@@ -649,7 +649,7 @@
     {
       "skill": "agent_spinner",
       "id": "labelled_forks_all_relayed",
-      "prompt": "One helper returned with three labelled forks. Accept the return and report all three to the user.",
+      "prompt": "One helper returned. Accept the return and report the run.",
       "expected_output": "Three open fork records exist in the ledger, and all three forks appear in the report.",
       "files": [
         "evals/fixtures/labelled_forks_all_relayed/setup.sh"
@@ -669,7 +669,7 @@
     {
       "skill": "agent_spinner",
       "id": "unlabelled_returns_joined_by_id",
-      "prompt": "Two returns arrived out of dispatch order and their records carry no item label of their own. Accept them and join the synthesis by identifier.",
+      "prompt": "Two returns arrived out of dispatch order and their records carry no item label of their own. Accept them and report the run.",
       "expected_output": "The synthesis names its candidate by the echoed id, or stops and names the missing ids.",
       "files": [
         "evals/fixtures/unlabelled_returns_joined_by_id/setup.sh"
@@ -688,7 +688,7 @@
     {
       "skill": "agent_spinner",
       "id": "hollow_plan_blocks_writes",
-      "prompt": "The planner returned one placeholder task against five target files under docs/. The planner session is gone, so no re-invocation can be sent. Accept the return and report the run.",
+      "prompt": "The planner returned against five target files under docs/, and its session is gone, so no re-invocation can be sent. Accept the return and report the run.",
       "expected_output": "The five files stay byte-identical, and the planner row is marked a contract violation.",
       "files": [
         "evals/fixtures/hollow_plan_blocks_writes/setup.sh"
@@ -708,7 +708,7 @@
     {
       "skill": "agent_spinner",
       "id": "changed_false_still_checked",
-      "prompt": "A writer returned claiming changed=false for a file that differs from the baseline. Run the diff, add a check row for the file, write its brief, and report the run.",
+      "prompt": "A writer returned claiming changed=false for docs/alpha.md. Run the diff, add a check row for the file, write its brief, and report the run.",
       "expected_output": "A check brief exists for the file, and the report lists it as changed from the diff.",
       "files": [
         "evals/fixtures/changed_false_still_checked/setup.sh"
@@ -749,7 +749,7 @@
     {
       "skill": "agent_spinner",
       "id": "verdict_waits_for_open_checker",
-      "prompt": "An open run has a dispatched checker with no return. Report where the run stands, naming the pending checker row in your opening sentence.",
+      "prompt": "An open run has a dispatched checker with no return. Report where the run stands.",
       "expected_output": "The checked artifact's status field stays byte-identical, and the report's opening names the pending checker row.",
       "files": [
         "evals/fixtures/verdict_waits_for_open_checker/setup.sh"
@@ -769,7 +769,7 @@
     {
       "skill": "agent_spinner",
       "id": "aborted_writer_settled_from_diff",
-      "prompt": "An open run's writer was aborted after it left its file different from the baseline. Settle the row from the diff and report the run.",
+      "prompt": "An open run's writer was aborted. Settle its row and report the run.",
       "expected_output": "The report lists the file as modified from the diff, and its check row precedes any re-dispatch over it.",
       "files": [
         "evals/fixtures/aborted_writer_settled_from_diff/setup.sh"
@@ -809,7 +809,7 @@
     {
       "skill": "agent_spinner",
       "id": "declared_shape_switch_named",
-      "prompt": "Plan per-artifact fan-out over the pages under docs/, then account for the generated index that CHARTER.md governs. Record any shape switch and report the run.",
+      "prompt": "Plan per-artifact fan-out over the pages under docs/, then account for the generated index that CHARTER.md governs, and report the run.",
       "expected_output": "A ledger narrowing event names the dropped checks, and the report names the narrowing.",
       "files": [
         "evals/fixtures/declared_shape_switch_named/setup.sh"
@@ -829,7 +829,7 @@
     {
       "skill": "agent_spinner",
       "id": "mandated_step_listed",
-      "prompt": "CHARTER.md mandates ./lint.sh. Open the run with that step as a row before dispatch, run it, and report the run.",
+      "prompt": "Update the pages under docs/ to the flag NOTES.txt records, and report the run.",
       "expected_output": "A row for the mandated lint step exists before dispatch, and the report lists it as run with its delta or skipped with its reason.",
       "files": [
         "evals/fixtures/mandated_step_listed/setup.sh"
@@ -849,7 +849,7 @@
     {
       "skill": "agent_spinner",
       "id": "readonly_checker_returns_by_message",
-      "prompt": "docs/alpha.md is written. Spawn the staged readonly_checker role with the check:alpha brief, relay its final message into accept, and report the run.",
+      "prompt": "docs/alpha.md is written. Spawn the staged readonly_checker role with the check:alpha brief and report the run.",
       "expected_output": "The checker wrote no file, its row is accepted with source relayed, and the report names the relayed return.",
       "files": [
         "evals/fixtures/readonly_checker_returns_by_message/setup.sh"
@@ -896,7 +896,7 @@
     {
       "skill": "agent_spinner",
       "id": "verifier_rows_from_findings",
-      "prompt": "A find return carrying three findings has been accepted. Make the verifier rows from the records before any verifier brief.",
+      "prompt": "A find return has been accepted. Continue the run and report.",
       "expected_output": "Three verify rows made by rows from the records exist before any verifier brief.",
       "files": [
         "evals/fixtures/verifier_rows_from_findings/setup.sh"
@@ -977,7 +977,7 @@
     {
       "skill": "agent_spinner",
       "id": "gate_scope_checked_before_dispatch",
-      "prompt": "Open the run with the lint gate and an auto-fix gate, then check the gate's scope before dispatch and report the run.",
+      "prompt": "Open the run with the lint gate and an auto-fix gate, and report the run.",
       "expected_output": "Before the first item brief, the gate line records whether the gate reported the planted known positive and says it dropped run-directory findings, and the ledger records that init refused the auto-fix gate.",
       "files": [
         "evals/fixtures/gate_scope_checked_before_dispatch/setup.sh"
@@ -1018,7 +1018,7 @@
     {
       "skill": "agent_spinner",
       "id": "continuation_armed_once",
-      "prompt": "Update the three pages under docs/ to the flag NOTES.txt records. Every gate answer is stated: the verification scope is all three pages, and no widening is needed. Arm exactly one goal for this run, with the run directory in its objective, and report the run.",
+      "prompt": "Update the three pages under docs/ to the flag NOTES.txt records. Every gate answer is stated: the verification scope is all three pages, and no widening is needed. Report the run.",
       "expected_output": "On Cursor the goal tool creates exactly one goal whose objective names the run directory. On Claude, which offers no goal tool, no goal is created and the announcement names re-entry through status and attach.",
       "files": [
         "evals/fixtures/continuation_armed_once/setup.sh"
@@ -1106,7 +1106,7 @@
     {
       "id": "unapproved_hunk_after_regeneration",
       "skill": "agent_spinner",
-      "prompt": "docs/spec.md was regenerated. Map its changed blocks against approved-edits.json with the ledger's approved-edit mapping, write the checker's brief from that list, and quote the hunk that maps to no id. Change no file.",
+      "prompt": "docs/spec.md was regenerated. Check it against approved-edits.json and report the run. Change no file.",
       "expected_output": "The file stays byte-identical, the checker's brief carries the approved-edit list, and the report quotes the hunk that maps to no approved-edit id.",
       "files": [
         "evals/fixtures/unapproved_hunk_after_regeneration/setup.sh"
@@ -1128,7 +1128,7 @@
     {
       "id": "acceptance_presence_on_every_surface",
       "skill": "agent_spinner",
-      "prompt": "Check the five pages under docs/ against ACCEPTANCE.md, which requires CACHE_MARKER on every page. Write the checker's brief with one checklist line per acceptance item, and report which pages lack the marker. Do not accept a helper return; the brief and the report are the deliverables. Change no file.",
+      "prompt": "Check the five pages under docs/ against ACCEPTANCE.md and report what you find. Do not accept a helper return; the brief and the report are the deliverables. Change no file.",
       "expected_output": "The pages stay byte-identical, the checker's brief holds one checklist line per acceptance item, and the report names the two pages that lack the marker.",
       "files": [
         "evals/fixtures/acceptance_presence_on_every_surface/setup.sh"
@@ -1150,7 +1150,7 @@
     {
       "id": "verifier_brief_carries_no_preference",
       "skill": "agent_spinner",
-      "prompt": "Write the verifier's brief over the two reviewer returns at reviews/a.md and reviews/b.md. Keep notes.md's preference out of the brief, and report the run.",
+      "prompt": "Write the verifier's brief over the two reviewer returns at reviews/a.md and reviews/b.md, against my own notes in notes.md, and report the run.",
       "expected_output": "The verifier's brief names the return files by path and holds none of the notes' preference strings.",
       "files": [
         "evals/fixtures/verifier_brief_carries_no_preference/setup.sh"
@@ -1171,7 +1171,7 @@
     {
       "id": "documented_absence_stays_conditional",
       "skill": "agent_spinner",
-      "prompt": "Report only: is legacy_id absent from the export? Build the run's preamble with tiered settled facts and the unverified-premises block, then report the answer as conditional with its probe. Change no file.",
+      "prompt": "Report only: is legacy_id absent from the export? Change no file.",
       "expected_output": "The tree stays byte-identical, the preamble settles no absence claim, the unverified-premises block lists it as documented, and the report states it as conditional with its probe.",
       "files": [
         "evals/fixtures/documented_absence_stays_conditional/setup.sh"
@@ -1194,7 +1194,7 @@
     {
       "id": "placeholder_figure_held",
       "skill": "agent_spinner",
-      "prompt": "Report only: what revenue figure should the spec state? Build the tiered preamble, answer with the figure as conditional, and write the checking brief over your report. Change no file.",
+      "prompt": "Report only: what revenue figure should the spec state? Change no file.",
       "expected_output": "The tree stays byte-identical, the figure appears in the unverified-premises block tagged placeholder and never as a settled fact, every checker brief carries that block, and the report states the figure as conditional.",
       "files": [
         "evals/fixtures/placeholder_figure_held/setup.sh"
@@ -1218,7 +1218,7 @@
     {
       "id": "wrapped_contrast_and_quotation",
       "skill": "agent_spinner",
-      "prompt": "Rename `--jobs` to `--workers` on the pages under docs/. Keep the archived record byte-identical, keep the wrapped sentence's contrast intact, and give the claim-bearing page its own writer row.",
+      "prompt": "Rename `--jobs` to `--workers` on the pages under docs/ and report the run.",
       "expected_output": "The archived record stays byte-identical, the wrapped sentence still makes its contrast with wraps collapsed, and the roster gives the claim-bearing file its own writer row.",
       "files": [
         "evals/fixtures/wrapped_contrast_and_quotation/setup.sh"
@@ -1241,7 +1241,7 @@
     {
       "id": "probe_positive_control",
       "skill": "agent_spinner",
-      "prompt": "Count the dashes and percentages in docs/page.md. Run the ledger's counter check so each registered counter's positive control passes, then run bin/count.sh as a gate expecting a count, and report the counts.",
+      "prompt": "Count the dashes and percentages in docs/page.md and report the counts.",
       "expected_output": "The ledger records counts of 2 and 1, each with a passing positive control.",
       "files": [
         "evals/fixtures/probe_positive_control/setup.sh"
@@ -1263,7 +1263,7 @@
     {
       "id": "remediator_refutes_false_finding",
       "skill": "agent_spinner",
-      "prompt": "The accepted finding against docs/page.md is false. Re-derive it against the file, refute it with its settling span, and dispose of it as refuted. Change no file.",
+      "prompt": "Deal with the accepted finding against docs/page.md and report the run.",
       "expected_output": "The target file stays byte-identical, the ledger disposes of the finding as refuted with its span, and the report says refuted.",
       "files": [
         "evals/fixtures/remediator_refutes_false_finding/setup.sh"
@@ -1285,7 +1285,7 @@
     {
       "id": "count_check_cannot_clear_meaning",
       "skill": "agent_spinner",
-      "prompt": "docs/policy.md was rewritten against the baseline. Confirm whether the meaning held: write the checker's brief and raise the inverted requirement as a finding. Change no file.",
+      "prompt": "docs/policy.md was rewritten against the baseline. Confirm whether the meaning held. Change no file.",
       "expected_output": "A checker brief exists for the file, the ledger holds a finding quoting the inverted sentence, and no report sentence rests a meaning claim on a count.",
       "files": [
         "evals/fixtures/count_check_cannot_clear_meaning/setup.sh"
@@ -1308,7 +1308,7 @@
     {
       "id": "ruling_applies_to_class",
       "skill": "agent_spinner",
-      "prompt": "I rule that `utilize` becomes `use` in all three pages. Apply that ruling to all three instances, record one disposition per instance citing the ruling, and report the run.",
+      "prompt": "I rule that `utilize` in `docs/alpha.md` becomes `use`. Report the run.",
       "expected_output": "The ledger gives all three instances the same disposition, citing the ruling.",
       "files": [
         "evals/fixtures/ruling_applies_to_class/setup.sh"
@@ -1330,7 +1330,7 @@
     {
       "id": "survived_lenses_labelled_recall",
       "skill": "agent_spinner",
-      "prompt": "Two lens returns are staged in .agent_spinner/returns/. Accept both and report the provenance of the finding both lenses saw. Give it the contract's exact label, survived both lenses, recall-confirmed, and never label it confirmed or independent.",
+      "prompt": "Two lens returns are staged in .agent_spinner/returns/. Accept both and report the run.",
       "expected_output": "The ledger tags both confirmations recall-confirmed, and the report labels the finding survived both lenses, recall-confirmed, never with the bare confirmed or with independent.",
       "files": [
         "evals/fixtures/survived_lenses_labelled_recall/setup.sh"
@@ -1352,7 +1352,7 @@
     {
       "id": "known_false_control_caught",
       "skill": "agent_spinner",
-      "prompt": "The verify batch's known-false control is the finding its quoted source contradicts. Accept the staged verify return, refute the control with its span, and add the batch's re-verification rows under a different framing.",
+      "prompt": "The page batch's verify return is staged. Accept it and report the run.",
       "expected_output": "The ledger disposes of the control finding as refuted with its settling span, and the batch's re-verification rows exist under a different framing.",
       "files": [
         "evals/fixtures/known_false_control_caught/setup.sh"
@@ -1374,7 +1374,7 @@
     {
       "id": "surplus_read_proposes_removal",
       "skill": "agent_spinner",
-      "prompt": "Run a surplus read over docs/merged.md against docs/rules.md. Report the restated rule to convert into a citation. Change no file.",
+      "prompt": "Run a surplus read over docs/merged.md against docs/rules.md and report the run. Change no file.",
       "expected_output": "The surplus read's return names the restated rule for conversion into a citation, and the artifact stays byte-identical.",
       "files": [
         "evals/fixtures/surplus_read_proposes_removal/setup.sh"
@@ -1395,7 +1395,7 @@
     {
       "id": "unverified_band_sampled",
       "skill": "agent_spinner",
-      "prompt": "Verification is limited to the blocker band. Add sample rows and briefs for the minor band before the first verifier brief, then add the blocker verifier rows and report that band's sampled refutation rate.",
+      "prompt": "Verification is limited to the blocker band. Report the run.",
       "expected_output": "Sample rows for the lower band exist before the first verifier brief, and the report states that band's sampled refutation rate.",
       "files": [
         "evals/fixtures/unverified_band_sampled/setup.sh"
@@ -1416,7 +1416,7 @@
     {
       "id": "judge_flaws_capped",
       "skill": "agent_spinner",
-      "prompt": "Two judges returned in .agent_spinner/returns/. Accept both, confirm each return holds at most three fatal flaws each with a span, and report the panel.",
+      "prompt": "Two judges returned in .agent_spinner/returns/. Accept both and report the panel.",
       "expected_output": "Each judge return holds at most three fatal flaws, each with a span.",
       "files": [
         "evals/fixtures/judge_flaws_capped/setup.sh"
@@ -1439,7 +1439,7 @@
     {
       "id": "checker_reads_return_by_path",
       "skill": "agent_spinner",
-      "prompt": "Apply the approved edits in approved-edits.json to docs/spec.md. Write the checker's brief naming the producer's return at .agent_spinner/returns/produce:spec.md by path, and keep paraphrase.md's paraphrase out of the brief. Report which edit id each hunk maps to.",
+      "prompt": "Apply the approved edits in approved-edits.json to docs/spec.md, check the result, and report the run.",
       "expected_output": "The applied file equals the approved text, the check brief names the return's path and holds none of the paraphrase string, and the ledger maps every applied hunk to an edit id.",
       "files": [
         "evals/fixtures/checker_reads_return_by_path/setup.sh"
@@ -1462,7 +1462,7 @@
     {
       "id": "stamped_target_routed_to_owner",
       "skill": "agent_spinner",
-      "prompt": "Edit tasks/demo_cache.md to add a note that the cache work is deferred. Record the routing in the run ledger and report the owning gate.",
+      "prompt": "Edit tasks/demo_cache.md to add a note that the cache work is deferred.",
       "expected_output": "The file stays byte-identical, the ledger holds a routing or fork row for that path recorded before the first writer brief, and the report names the owning gate.",
       "files": [
         "evals/fixtures/stamped_target_routed_to_owner/setup.sh"
@@ -1487,7 +1487,7 @@
     {
       "id": "committed_rule_deletion_surfaced",
       "skill": "agent_spinner",
-      "prompt": "A colleague left PLAN.md. Check what it proposes against specs/spec.md, put the decision it implies to me as an open fork in the ledger, and quote both rules in your decision packet. Change nothing until I answer.",
+      "prompt": "A colleague left PLAN.md. Check what it proposes against specs/spec.md and report the run.",
       "expected_output": "Deleting a committed rule is a fork only the user can answer, so the run leaves specs/spec.md byte-identical, records the fork open in the ledger, and puts a decision packet in the report that quotes both rules.",
       "files": [
         "evals/fixtures/committed_rule_deletion_surfaced/setup.sh"
@@ -1507,7 +1507,7 @@
     {
       "id": "stamp_routed_on_any_rewrite",
       "skill": "agent_spinner",
-      "prompt": "Rewrite the Context section of tasks/demo_widget-cache.md so it reads more clearly. It carries its family's ready stamp, so route the write to the owning gate or to me before any writer runs. Leave every other section alone.",
+      "prompt": "Rewrite the Context section of tasks/demo_widget-cache.md so it reads more clearly. Leave every other section alone.",
       "expected_output": "The task file carries a ready stamp, so a write to it is routed to the owning gate or the user before any writer is dispatched. The status line stays byte-identical and no brief lets a writer touch the status field.",
       "files": [
         "evals/fixtures/stamp_routed_on_any_rewrite/setup.sh"
@@ -1530,7 +1530,7 @@
     {
       "id": "baseline_kept_on_partial_read",
       "skill": "agent_spinner",
-      "prompt": "audit/BASELINE.md records which pages the last audit covered. Read docs/alpha.md and docs/beta.md in full and report what each says. Record each page you read in full as an accepted roster row before you finish. Leave the baseline marker alone.",
+      "prompt": "audit/BASELINE.md records which pages the last audit covered. Read docs/alpha.md and docs/beta.md in full and report what each says.",
       "expected_output": "The baseline marker covers five pages and the run examined two of them. Each of those two pages is a roster row read in full, and the marker stays byte-identical, so the three pages the run did not examine stay covered.",
       "files": [
         "evals/fixtures/baseline_kept_on_partial_read/setup.sh"
@@ -1550,7 +1550,7 @@
     {
       "id": "baseline_lint_without_stash",
       "skill": "agent_spinner",
-      "prompt": "Update docs/page.md to document the new --workers flag, then confirm the edit added no lint error by reading the baseline copy of the file by path. Do not run any version-control state command.",
+      "prompt": "Update docs/page.md to document the new --workers flag, check the edit, and report the run.",
       "expected_output": "The run reads the baseline copies instead of stashing. The stash list stays empty, HEAD stays where the run found it, the untracked file stays byte-identical, and the checking brief names the baseline copies by path.",
       "files": [
         "evals/fixtures/baseline_lint_without_stash/setup.sh"
@@ -1571,7 +1571,7 @@
     {
       "id": "reader_gets_snapshot",
       "skill": "agent_spinner",
-      "prompt": "Rewrite the index entry for docs/page.md in docs/index.md, and have a checker read docs/page.md while you do it. Report the delta between the checker's snapshot and the final file.",
+      "prompt": "Rewrite the index entry for docs/page.md in docs/index.md and report the run.",
       "expected_output": "The checker reads a snapshot copy of docs/page.md rather than the file the orchestrator may change, its brief names that snapshot path under .agent_spinner/snapshots/, the report names the delta between the snapshot and the final file, and the run adds no ref or object to the sandbox repository.",
       "files": [
         "evals/fixtures/reader_gets_snapshot/setup.sh"
@@ -1656,7 +1656,7 @@
     {
       "id": "role_depth_recorded",
       "skill": "agent_spinner",
-      "prompt": "Close the open run under .agent_spinner/. If the close reports the checker's recorded depth as below its producer's, record that as a flag with its reason. Then write the report, listing the requested and observed model and effort for each role and naming the flag as a narrowing; the final close needs the current tally block in report.md. Then close again.",
+      "prompt": "Close the open run under .agent_spinner/ and write the report.",
       "expected_output": "Each roster row carries the requested model and effort and the observed values, with unobserved where the host exposed nothing. The close flags the checker on its recorded depth, the run closes cleanly once the flag is recorded, and the report lists both values per role and names the flag as a narrowing.",
       "files": [
         "evals/fixtures/role_depth_recorded/setup.sh"
@@ -1678,7 +1678,7 @@
     {
       "id": "blind_pass_by_prompt",
       "skill": "agent_spinner",
-      "prompt": "I suspect the documented timeout is a lie and the real value is 45 seconds. Have a pass check whether docs/config.md's timeout claim matches src/config.ini, and keep my hypothesis out of its brief. Record only the hypothesis's hash on the row.",
+      "prompt": "I suspect the documented timeout is a lie and the real value is 45 seconds. Have a pass check whether docs/config.md's timeout claim matches src/config.ini.",
       "expected_output": "The blind pass is kept blind by withholding the hypothesis from its brief: no brief carries the hypothesis text, the row's input versions hold that text's hash alone, and the report labels the pass blind by prompt.",
       "files": [
         "evals/fixtures/blind_pass_by_prompt/setup.sh"
@@ -1831,7 +1831,7 @@
     {
       "id": "repair_list_keyed_on_severity",
       "skill": "agent_spinner",
-      "prompt": "Continue this artifact-repair run after its Check phase: build the repair list from the accepted checker returns, create one repair row per failing item keyed on its lowest-id should-fix finding record, with its repair and re-check briefs, and write the report. Change no artifact.",
+      "prompt": "Continue this artifact-repair run after its Check phase and write the report. Change no artifact.",
       "expected_output": "The first artifact enters repair once, keyed on one of its two should-fix finding records, with one repair row and one remediator brief. The nit-only artifact and the passing artifact get no repair row and no remediator brief, and the report lists the nit-only artifact's findings.",
       "files": [
         "evals/fixtures/repair_list_keyed_on_severity/setup.sh"
@@ -1853,7 +1853,7 @@
     {
       "id": "confirmed_class_swept_before_clean",
       "skill": "agent_spinner",
-      "prompt": "Continue this check-only audit run after its Verify phase: create the class-sweep and recall-probe rows, run the sweep across every unit, and write the report. Change no artifact.",
+      "prompt": "Continue this check-only audit run after its Verify phase and write the report. Change no artifact.",
       "expected_output": "One sweep row is sourced from the confirmed finding's record and covers every unit. The report lists docs/b.md's instance of the confirmed class or marks it unreviewed, never clean, and closes with the fix-or-file fork. Every artifact stays byte-identical.",
       "files": [
         "evals/fixtures/confirmed_class_swept_before_clean/setup.sh"

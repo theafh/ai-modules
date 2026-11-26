@@ -324,8 +324,9 @@ files.
   `checker_spawned_without_role` route cases, the two
   `sweep_rewrite_hunk_blocks_sampling` checks that a repair-round re-check
   does not count as a second initial check and that a second initial check for
-  one page still fails, and each run-path eval's passing case beside its
-  on-disk and ledger fail branches;
+  one page still fails, each run-path eval's passing case beside its
+  on-disk and ledger fail branches, and the `stamped_target_routed_to_owner`
+  cases for a dropped planning row and the hyphenated family form;
   `script_tests/fixture_stage.py` stages every eval and fails a helper return
   that breaks the shipped ledger's return contract, so a ledger change that
   leaves a fixture behind fails `make test` before any paid eval run;

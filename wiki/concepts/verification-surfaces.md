@@ -1,7 +1,7 @@
 ---
 title: Verification surfaces for a shipped skill
 created: 2026-08-10
-updated: 2026-11-21
+updated: 2026-11-26
 type: concept
 tags: [skill, repo-structure, authoring, claude, cursor, verification-gap]
 sources: [raw/notes/eval-worker-dependency-skill-reads-2026-10-08.md, raw/notes/micro-deployed-worker-home-probes-2026-10-08.md]
@@ -266,6 +266,40 @@ shapes, the check accepts both; where a report field is structured, the check
 anchors to the record whose subject is the item under test; where the text is
 prose, the check reads it with wraps collapsed. A grader that hard-codes one
 surface form is testing its author's guess about the answer, not the behaviour.
+
+### A prompt that states the rule measures the prompt, not the skill
+
+An eval prompt is part of the instrument, and a prompt that states the behaviour
+its eval is named for makes that eval vacuous: the run complies because the
+prompt told it to, so deleting the rule from the skill leaves the eval green.
+The eval then certifies the prompt and says nothing about the skill. This is the
+prompt-side twin of a grader that tests surface form.
+
+The selector applied on 2026-11-26 to the `agent_spinner` prompts asks two
+questions of each sentence. A sentence that states an answer the run can derive
+from the staged tree goes, because the run must establish that answer itself:
+which file differs from the baseline, what a stamp records, which control the
+source contradicts, which class a ruling covers. A sentence that states the
+instruction the skill's doctrine owns also goes, because the skill must supply
+it. A sentence stays when it states the user's request, a scope, a constraint,
+or a decision the user already made, and a pointer at material the request
+forces the run to read stays, because the request then forces the read. Two
+worked boundaries fix the line: `changed_false_still_checked` keeps the
+writer's return and the file and loses "for a file that differs from the
+baseline", and `verifier_brief_carries_no_preference` names `notes.md` as
+material the brief is written against while losing "keep its preference out of
+the brief".
+
+Two corollaries follow. First, the grader must read an artifact the skill's
+doctrine produces rather than the removed sentence's wording; where a grader
+checks an exact label, that label has to be stated in the skill itself, as the
+`survived both lenses, recall-confirmed` label and the `blind by prompt` label
+are. Second, the verdicts must be measured before and after the rewrite on the
+same vendor, model, and effort. A pre-rewrite fail is not evidence about the
+rewrite, and a post-rewrite fail is recorded as a skill gap with the failing
+check named, never repaired by putting the rule back into the prompt. The
+`tests/agent_spinner/evals/README.md` `## Prompt selection` section owns the
+selection and the recorded verdicts.
 
 ### A long conjunction hides which behaviour broke
 
