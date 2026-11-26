@@ -38,6 +38,8 @@ ALLOWED_ISOLATION_PREFIXES = frozenset(
         "lh_pass_",
         "nl_",
         "skill_doctor_",
+        "spr_",
+        "spr_judge_",
         "task_",
         "task_auto_check_",
         "task_create_",

@@ -1,0 +1,35 @@
+{
+  "skill_name": "spr",
+  "evals": [
+    {
+      "id": "priming_basics",
+      "prompt": "Turn the text in source.md into an SPR.",
+      "expected_output": "A markdown bullet list with at least one bullet per source paragraph, no numbered lists, no trailing punctuation on any bullet, no invented content, and a final integer reconstructability rating from 1 to 10.",
+      "files": ["evals/fixtures/priming_basics/setup.sh"],
+      "expectations": [
+        "spr.md carries at least one bullet per source paragraph.",
+        "spr.md carries no numbered list.",
+        "No bullet ends with trailing punctuation.",
+        "No forbidden term from forbidden.txt appears.",
+        "The document ends with a single integer rating from 1 to 10.",
+        "A refute-biased judge confirms reconstructability and non-overlap."
+      ],
+      "timeout": 600
+    },
+    {
+      "id": "memory_systems",
+      "prompt": "Compress the text in source.md into an SPR.",
+      "expected_output": "A markdown bullet list with at least one bullet per source paragraph, no numbered lists, no trailing punctuation on any bullet, no invented content, and a final integer reconstructability rating from 1 to 10.",
+      "files": ["evals/fixtures/memory_systems/setup.sh"],
+      "expectations": [
+        "spr.md carries at least one bullet per source paragraph.",
+        "spr.md carries no numbered list.",
+        "No bullet ends with trailing punctuation.",
+        "No forbidden term from forbidden.txt appears.",
+        "The document ends with a single integer rating from 1 to 10.",
+        "A refute-biased judge confirms reconstructability and non-overlap."
+      ],
+      "timeout": 600
+    }
+  ]
+}

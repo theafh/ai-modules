@@ -2,9 +2,11 @@
 description: "Add a Pattern A behavioural harness for spr: staged source documents, a deterministic bullet-per-paragraph and shape grader, and a refute-biased reconstructability judge."
 scope: tests
 created: 2026-11-25T06:13:24Z
-updated: 2026-11-25T08:42:36Z
-status: open
+updated: 2026-11-26T22:40:30Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Add a behavioural harness for spr
