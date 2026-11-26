@@ -44,11 +44,20 @@ states the user's request, a scope, a constraint, or a decision the user
 already made, and a pointer at material the request forces the run to read
 stays.
 
-The selector was re-run on 2026-11-26 over every prompt in `evals.json`, each
-read against its eval's `id` and expectations. It selected 44 prompts, listed
-below with the sentence each lost and the fact the run must now derive. The
-remaining prompts keep only the request plus facts a real user would state;
+The selector was re-run on 2026-11-26 over every prompt then in `evals.json`,
+each read against its eval's `id` and expectations. It selected 44 prompts,
+listed below with the sentence each lost and the fact the run must now derive.
+The remaining prompts keep only the request plus facts a real user would state;
 the near-misses are recorded after the list.
+
+Three prompts landed after that pass with the user-fork evals:
+`contradicting_checkers_gated` ("Two checker returns are staged in
+.agent_spinner/returns/, both on docs/cache.md. Accept them and report the
+run."), `instruction_rule_forked` ("The deploy pages under docs/ keep drifting
+back. Fix the cause."), and `completed_task_routed` ("Bring the task backlog
+under tasks/ into line with the code."). Each was read again on 2026-11-26 and
+states only the job plus a scope or a pointer at the staged material, so all
+three were kept unchanged.
 
 ### Selected prompts
 
@@ -1449,7 +1458,7 @@ weakened.
 
 | Eval | Result | Run | Failing check |
 | --- | --- | --- | --- |
-| `contradicting_checkers_gated` | fail (3 of 4) | `../workspace/run-20261126-150227` | `an open gate names both checker rows` |
+| `contradicting_checkers_gated` | fail (4 of 5) after re-grading | `../workspace/run-20261126-150227` | `an open gate names both checker rows` |
 | `instruction_rule_forked` | fail (2 of 4) | `../workspace/run-20261126-144913` | `AGENTS.md stays byte-identical`; `the ledger holds an open fork or gate naming AGENTS.md` |
 | `completed_task_routed` | fail (4 of 5) | `../workspace/run-20261126-150227` | `a routing record names task_finish or task_audit` |
 
