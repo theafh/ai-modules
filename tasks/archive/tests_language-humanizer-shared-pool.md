@@ -2,7 +2,7 @@
 description: Point language_humanizer's already-parallel, isolated pool at the shared eval-runner helper without changing the five-pass measurement.
 scope: tests/language_humanizer/evals
 created: 2026-10-04T20:11:10Z
-updated: 2026-11-26T22:53:00Z
+updated: 2026-11-26T21:54:41Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

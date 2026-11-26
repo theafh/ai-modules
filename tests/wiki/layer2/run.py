@@ -172,7 +172,8 @@ def rewrite_prompt_paths(
 
 
 def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
-             resolved: vendor.Resolved, timeout: int) -> dict:
+             resolved: vendor.Resolved, timeout: int,
+             env: dict[str, str] | None = None) -> dict:
     sid = scenario["id"]
     pass_dir = run_dir / sid / f"pass-{pass_num}"
     pass_dir.mkdir(parents=True, exist_ok=True)
@@ -195,6 +196,7 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
                 "--sandbox-root", str(sandbox_root),
             ],
             capture_output=True, text=True, check=True,
+            env=dict(env) if env is not None else None,
         ).stdout
 
         model_label = resolved.worker_model or "<inherit>"
@@ -208,6 +210,11 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
         with micro_deploy.micro_deploy(
             resolved.vendor, ARTEFACTS, workdir, preflight=False
         ) as md:
+            if env:
+                for key in ("TMPDIR", "TEMP", "TMP"):
+                    value = env.get(key)
+                    if value:
+                        md.env[key] = value
             prompt = rewrite_prompt_paths(prompt, scenario, md.path_map)
             prompt_path.write_text(prompt)
             worker = micro_deploy.run_worker(
@@ -280,14 +287,15 @@ def run_pass(scenario: dict, pass_num: int, run_dir: pathlib.Path,
 
 
 def run_scenario(s: dict, passes: int, run_dir: pathlib.Path,
-                 resolved: vendor.Resolved, timeout: int) -> None:
+                 resolved: vendor.Resolved, timeout: int,
+                 env: dict[str, str] | None = None) -> None:
     """Run all passes of a single scenario sequentially.
 
     Each pass stages into its own outside-checkout root, so pass-2 starts from
     the same initial fixture state as pass-1 without sharing a live directory.
     """
     for p in range(1, passes + 1):
-        run_pass(s, p, run_dir, resolved, timeout)
+        run_pass(s, p, run_dir, resolved, timeout, env)
 
 
 def main() -> int:
@@ -355,8 +363,8 @@ def main() -> int:
     print(f"Running {len(scenarios)} scenario(s) with {workers} parallel worker(s)")
 
     def job_for(scenario):
-        return lambda _env: run_scenario(
-            scenario, passes, run_dir, resolved, args.timeout)
+        return lambda env: run_scenario(
+            scenario, passes, run_dir, resolved, args.timeout, env)
 
     def on_error(index: int, exc: Exception) -> None:
         sid = scenarios[index]["id"]
