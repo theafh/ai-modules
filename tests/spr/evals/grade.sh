@@ -98,9 +98,9 @@ PY
 
   rating="$(python3 - "$spr" <<'PY'
 import re, sys
-text = open(sys.argv[1], encoding="utf-8").read().strip()
-tail = text[-200:]
-ok = bool(re.search(r"(?<![0-9])(?:[1-9]|10)(?![0-9])", tail))
+lines = [l.strip() for l in open(sys.argv[1], encoding="utf-8") if l.strip()]
+last = lines[-1] if lines else ""
+ok = bool(re.fullmatch(r"(?i)(?:rating\s*[:=]?\s*)?(?:[1-9]|10)\.?", last))
 print("ok" if ok else "bad")
 PY
 )"

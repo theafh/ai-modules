@@ -77,7 +77,9 @@ def main() -> int:
             bin=resolved.bin,
             model=resolved.judge_model,
             prompt=prompt,
+            workspace=str(root),
             effort=resolved.judge_effort,
+            extra_args=worker_isolation.isolation_args(resolved.vendor),
         )
         proc = subprocess.run(
             cmd, cwd=root, capture_output=True, text=True,

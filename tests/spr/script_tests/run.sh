@@ -54,10 +54,24 @@ d="$(case_dir forbidden)"
 printf -- '- first paragraph concept\n- second paragraph concept\n- spaced repetition software\n8\n' > "$d/spr.md"
 check "FAIL: an out-of-scope term fails the scope check" bash -c "! \"$GRADE\" x \"$d\" \"$d/response.txt\" >/dev/null"
 
+# FAIL: a number inside a bullet with no final rating.
+d="$(case_dir number_in_bullet)"
+printf -- '- first paragraph holds 4 chunks\n- second paragraph concept\n' > "$d/spr.md"
+check "FAIL: a number inside a bullet is not a final rating" bash -c "! \"$GRADE\" x \"$d\" \"$d/response.txt\" >/dev/null"
+
 # FAIL: missing rating.
 d="$(case_dir norating)"
 printf -- '- first paragraph concept\n- second paragraph concept\n' > "$d/spr.md"
 check "FAIL: a missing rating fails the rating check" bash -c "! \"$GRADE\" x \"$d\" \"$d/response.txt\" >/dev/null"
+
+# The shared stage guard must hold for this runner.
+if python3 "$HERE/../../lib/check_stage_guard.py" "$HERE/../evals" >/dev/null 2>&1; then
+  printf '  ok   stage guard holds\n'
+  pass=$((pass + 1))
+else
+  printf '  FAIL stage guard\n'
+  fail=$((fail + 1))
+fi
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [[ "$fail" -eq 0 ]]

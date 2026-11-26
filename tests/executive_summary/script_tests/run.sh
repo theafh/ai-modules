@@ -64,6 +64,11 @@ d="$(case_dir bullets)"
 { good_summary; printf -- '- a bullet the contract forbids\n'; } > "$d/summary.md"
 check "FAIL: a bullet list fails the prose check" bash -c "! \"$GRADE\" x \"$d\" \"$d/response.txt\" >/dev/null"
 
+# FAIL: a Unicode bullet marker.
+d="$(case_dir unicode_bullet)"
+{ good_summary; printf '\u2022 a bullet the contract forbids\n'; } > "$d/summary.md"
+check "FAIL: a Unicode bullet fails the prose check" bash -c "! \"$GRADE\" x \"$d\" \"$d/response.txt\" >/dev/null"
+
 # FAIL: invented term.
 d="$(case_dir invented)"
 { good_summary; printf 'The budget was fourteen million.\n'; } > "$d/summary.md"
@@ -73,6 +78,15 @@ check "FAIL: an invented term fails the source-boundary check" bash -c "! \"$GRA
 d="$(case_dir norating)"
 printf 'The source repeats one word a hundred times and says nothing more at all here.\n' > "$d/summary.md"
 check "FAIL: a missing self-rating fails the rating check" bash -c "! \"$GRADE\" x \"$d\" \"$d/response.txt\" >/dev/null"
+
+# The shared stage guard must hold for this runner.
+if python3 "$HERE/../../lib/check_stage_guard.py" "$HERE/../evals" >/dev/null 2>&1; then
+  printf '  ok   stage guard holds\n'
+  pass=$((pass + 1))
+else
+  printf '  FAIL stage guard\n'
+  fail=$((fail + 1))
+fi
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [[ "$fail" -eq 0 ]]

@@ -238,7 +238,8 @@ are `tests/task_auto_check/evals/run.py`, `tests/task/evals/run.py`,
 `tests/git_review/evals/run.py`, `tests/guardrail_audit/evals/run.py`,
 `tests/skill_doctor/evals/run.py`, `tests/agent_spinner/evals/run.py`,
 `tests/git_auto_review/evals/run.py`,
-`tests/language_humanizer/evals/run.py`.
+`tests/language_humanizer/evals/run.py`,
+`tests/executive_summary/evals/run.py`, and `tests/spr/evals/run.py`.
 `tests/wiki/layer2/run.py` is the Pattern B runner that drives the same
 pool: it submits one scenario per job, and a scenario's passes stay
 sequential inside that job. `task_auto_check` runs its serial

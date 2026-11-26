@@ -92,7 +92,7 @@ def stage(eval_id: str, target: pathlib.Path, env: Mapping[str, str]) -> dict:
         )
     sandbox_proj, skill_path, prompt, _ = result.stdout.split("\0")
     if not sandbox_proj or not pathlib.Path(sandbox_proj).is_dir():
-        raise RuntimeError(f"stage.sh staged no project for eval {eval_id}: {sandbox_proj!r}")
+        raise RuntimeError(f"stage.sh staged no sandbox project for eval {eval_id}: {sandbox_proj!r}")
     return {"sandbox_proj": sandbox_proj, "skill_path": skill_path, "prompt": prompt}
 
 
@@ -176,11 +176,11 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
         judge_ran = False
         if not args.skip_judge and completed and grade_ok:
             judge_ran = True
-            summary = pathlib.Path(workdir) / "spr.md"
+            delivered = pathlib.Path(workdir) / "spr.md"
             verdict_path = eval_dir / "judge.json"
             judge = subprocess.run(
                 [sys.executable, str(JUDGE), eval_id, str(pathlib.Path(workdir) / "source.md"),
-                 str(summary), "--vendor", resolved.vendor,
+                 str(delivered), "--vendor", resolved.vendor,
                  "--judge-model", resolved.judge_model or "",
                  "--judge-effort", resolved.judge_effort or "",
                  "--timeout", str(args.judge_timeout), "--out", str(verdict_path)],

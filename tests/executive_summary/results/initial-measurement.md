@@ -12,8 +12,9 @@ Run dir: `tests/executive_summary/workspace/run-20261126-232731` (gitignored).
 
 Both evals graded: prose-only, invented-term, and self-rating checks behaved
 as expected (`policy_brief` passed the rating check, `technical_report` did
-not). The deterministic grader and the judge are working; the recorded failure
-is a skill finding, not a harness defect — the skill's own `<length>` target is
+not). Grading failed on the length window, so the runner skipped the judge and
+the judge's verdict is unverified in this record; the recorded failure is a
+skill finding, not a harness defect — the skill's own `<length>` target is
 10 to 15% of the input, and on both fixtures the default-vendor worker wrote
 about 19-20%.
 

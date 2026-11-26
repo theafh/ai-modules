@@ -92,7 +92,7 @@ def stage(eval_id: str, target: pathlib.Path, env: Mapping[str, str]) -> dict:
         )
     sandbox_proj, skill_path, prompt, _ = result.stdout.split("\0")
     if not sandbox_proj or not pathlib.Path(sandbox_proj).is_dir():
-        raise RuntimeError(f"stage.sh staged no project for eval {eval_id}: {sandbox_proj!r}")
+        raise RuntimeError(f"stage.sh staged no sandbox project for eval {eval_id}: {sandbox_proj!r}")
     return {"sandbox_proj": sandbox_proj, "skill_path": skill_path, "prompt": prompt}
 
 
@@ -116,9 +116,6 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
     try:
         staged = stage(eval_id, root, env)
         workdir = staged["sandbox_proj"]
-        prompt = WORKER_PROMPT.format(
-            skill_path=staged["skill_path"], workdir=workdir, prompt=staged["prompt"]
-        )
 
         key = None
         if cache is not None:
@@ -128,7 +125,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                 model=resolved.worker_model,
                 effort=resolved.worker_effort,
                 eval_id=eval_id,
-                prompt=prompt,
+                prompt=staged["prompt"],
                 dependencies=eval_cache.dependencies_for(EVALS, eval_id),
             )
         hit = eval_runner.cache_lookup(cache, eval_id, key, eval_dir, force=args.force)
@@ -142,29 +139,34 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
             resolved.vendor, ARTEFACTS, pathlib.Path(workdir), preflight=False
         ) as md:
             _apply_job_temp(md.env, env)
-            cmd = vendor.build_print_cmd(
-                vendor=resolved.vendor,
-                bin=resolved.bin,
-                model=resolved.worker_model,
-                prompt=prompt,
-                workspace=workdir,
-                effort=resolved.worker_effort,
+            prompt = WORKER_PROMPT.format(
+                skill_path=md.path_map["executive_summary"],
+                workdir=workdir, prompt=staged["prompt"],
             )
-            proc = subprocess.run(
-                cmd, cwd=workdir, capture_output=True, text=True,
-                timeout=args.timeout, env=md.env,
+            worker = micro_deploy.run_worker(
+                vendor_name=resolved.vendor, bin_name=resolved.bin,
+                model=resolved.worker_model, effort=resolved.worker_effort,
+                prompt=prompt, deploy=md, timeout=args.timeout, cwd=workdir,
+            )
+            integrity, checkout_unread, harness_copy_unread = (
+                micro_deploy.provenance_records(worker)
             )
         ended = time.time()
-        response = proc.stdout
+        rc = worker.returncode
+        response = worker.stdout
+        stderr = worker.stderr
         (eval_dir / "response.txt").write_text(response, encoding="utf-8")
-        (eval_dir / "stderr.txt").write_text(proc.stderr, encoding="utf-8")
+        (eval_dir / "stderr.txt").write_text(stderr, encoding="utf-8")
         (eval_dir / "timing.json").write_text(json.dumps({
             "started_at": started, "ended_at": ended,
-            "duration_s": ended - started, "worker_rc": proc.returncode,
+            "duration_s": ended - started, "worker_rc": rc,
             "model": resolved.worker_model, "effort": resolved.worker_effort,
+            "artefacts_read_from_micro_deployment": integrity,
+            "checkout_unread": checkout_unread,
+            "harness_copy_unread": harness_copy_unread,
         }, indent=2) + "\n", encoding="utf-8")
 
-        completed = worker_completed(proc.returncode, response)
+        completed = worker_completed(rc, response)
         grading = subprocess.run(
             ["bash", str(GRADE), eval_id, workdir, str(eval_dir / "response.txt")],
             capture_output=True, text=True, env=dict(env),
@@ -196,6 +198,8 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
         passed = completed and grade_ok and judge_ok
         verdict = {
             "eval_id": eval_id, "passed": passed, "worker_completed": completed,
+            "artefacts_read_from_micro_deployment": integrity,
+            "checkout_unread": checkout_unread,
             "grade_ok": grade_ok, "judge_ok": judge_ok, "judge_ran": judge_ran,
             "graded_at": datetime.datetime.now().isoformat(timespec="seconds"),
             "model": resolved.worker_model, "effort": resolved.worker_effort,
@@ -208,7 +212,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
                 model=resolved.worker_model or "",
                 effort=resolved.worker_effort or "",
                 duration_s=ended - started,
-                worker_rc=proc.returncode,
+                worker_rc=rc,
                 grading_output=grading.stdout + grading.stderr,
                 response_excerpt=response[:eval_cache.RESPONSE_EXCERPT_CHARS],
             )

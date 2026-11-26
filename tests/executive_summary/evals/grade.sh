@@ -42,9 +42,9 @@ check "source.md exists and is non-empty" test -s "$source"
 
 if [[ -s "$summary" && -s "$source" ]]; then
   # No bullet or numbered list markers at the start of a line.
-  if grep -nE '^[[:space:]]*([-*+][[:space:]]|[0-9]+[.)][[:space:]])' "$summary" >/dev/null; then
+  if grep -nE '^[[:space:]]*(\(?[0-9]+[.)]|[-*+•·‣▪])[[:space:]]' "$summary" >/dev/null; then
     printf '  FAIL  no bullet or numbered list markers\n'
-    grep -nE '^[[:space:]]*([-*+][[:space:]]|[0-9]+[.)][[:space:]])' "$summary" | head -5 | sed 's/^/        /'
+    grep -nE '^[[:space:]]*(\(?[0-9]+[.)]|[-*+•·‣▪])[[:space:]]' "$summary" | head -5 | sed 's/^/        /'
     fail=1
   else
     printf '  PASS  no bullet or numbered list markers\n'
