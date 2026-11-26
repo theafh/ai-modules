@@ -1,7 +1,7 @@
 ---
 title: The deployment model
 created: 2026-08-08
-updated: 2026-11-25
+updated: 2026-11-26
 type: concept
 tags: [deployment, plugin, discovery, repo-structure]
 sources: []
@@ -79,8 +79,12 @@ source sits outside `plugins/` at all is on
 `~/.ai_asset_deploy/config` is parsed in robots.txt style: a `#tool` section
 heading, then `disallow:` lines that skip a repo-relative path for that tool,
 `replace:` lines that substitute a variable inside deployed copies, and a
-`style:<name>` line naming which style that tool activates. When the machine has
-no config, the script reads the committed
+`style:<name>` line naming the output style a Claude deploy merges as
+`outputStyle` at its scope. That merge does not settle resolution: Claude reads
+`outputStyle` from `.claude/settings.local.json`, then `.claude/settings.json`,
+then the user-level `~/.claude/settings.json`, so a project-level value
+outranks the user-level merge and wins. When the machine has no config, the
+script reads the committed
 `deployment/ai_asset_deploy.conf.template` instead, so a fresh checkout deploys
 the shared defaults. That template disallows any path matching `*legacy*` for
 every target, which keeps a legacy artefact in the repository while ensuring it
@@ -124,21 +128,27 @@ a profile file and a project configuration over the user configuration. A global
 deploy therefore establishes the machine default, which a project can override.
 
 That override is a silent-failure surface as much as it is a feature. The deploy
-merges its key, logs the merge, and reports the run as successful, and nothing in
-that report separates a style that took effect from one a project-local key
-already shadows. The operator reads a clean summary and then meets a session that
-ignores the style. On Claude the confusion compounds, because every interactive
-route writes the file that wins, recorded on
+merges its key, logs the merge, and reports the run as successful, and a
+project-local key that already shadows the style wins while the summary still
+reports the merge as done. On Claude the confusion compounds, because every
+interactive route writes the file that wins, recorded on
 [Claude output style selection](claude-output-style-selection.md), so a style
 picked by hand sticks while the deployed one looks broken.
 
-What the deploy can honestly say about this is bounded by what it can read. It
-resolves its own repository root by walking up from the script's own location to
-the directory holding `plugins/`, never from the working directory, so a run can
-inspect its own checkout and the project tree it was pointed at, and no other
-repository on the machine. The absence of a warning is therefore never a coverage
-claim across repositories, and only an unconditional statement of the override rule
-holds for the repositories a run cannot open.
+The deploy answers that gap with what it can read. A project-dir run reads the
+project's `.claude/settings.local.json`, the one file that outranks its merge,
+and warns with that file's path, its value, the deployed value, and the remedy.
+A global run checks its own checkout's `.claude/settings.local.json` and
+`.claude/settings.json` for the same shadow, and always prints a caveat that the
+merge lands at user level and that any project's `outputStyle` overrides it,
+naming `.claude/settings.local.json`. What the deploy can honestly say is
+bounded by what it can read. It resolves its own repository root by walking up
+from the script's own location to the directory holding `plugins/`, never from
+the working directory, so a run can inspect its own checkout and the project
+tree it was pointed at, and no other repository on the machine. The absence of a
+warning is therefore never a coverage claim across repositories, and only an
+unconditional statement of the override rule holds for the repositories a run
+cannot open.
 
 ### Uninstall restores the value it replaced
 

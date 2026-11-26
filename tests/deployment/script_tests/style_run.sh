@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Regression coverage for the style artefact type: Claude two-placement
-# deploy, Cursor project always-apply .mdc generation, Antigravity always-on
-# rule generation at both scopes, and merge_json_key prior-value
-# capture/restore.
+# deploy, the output-style shadow report and global override caveat, Cursor
+# project always-apply .mdc generation, Antigravity always-on rule generation
+# at both scopes, and merge_json_key prior-value capture/restore.
 set -euo pipefail
 
 if [[ "${TEST_VENDOR:-}" == "cursor" ]] || [[ "${1:-}" == "--vendor" && "${2:-}" == "cursor" ]]; then
@@ -480,5 +480,193 @@ grep -qE '[0-9]{5} bytes' "${SCRATCH}/oversize.out" ||
 grep -q '24000-byte per-file cap' "${SCRATCH}/oversize.out" ||
   fail "oversized antigravity rule must name the limit"
 [[ ! -e "$oversize_dest" ]] || fail "oversized antigravity rule must write nothing"
+
+# --- Output-style shadow reporting and the global override caveat ---
+# The global scenarios stage this checkout's own .claude settings files, the
+# way the harness backs aside the fixtures it stages, and restore them on exit
+# so the working tree is left byte-identical.
+REPO_CLAUDE_DIR="${REPO_ROOT}/.claude"
+REPO_SETTINGS_LOCAL="${REPO_CLAUDE_DIR}/settings.local.json"
+REPO_SETTINGS="${REPO_CLAUDE_DIR}/settings.json"
+REPO_SETTINGS_LOCAL_SAVED="${SCRATCH}/repo-settings.local.json"
+REPO_SETTINGS_SAVED="${SCRATCH}/repo-settings.json"
+REPO_CLAUDE_DIR_EXISTED=false
+REPO_SETTINGS_LOCAL_EXISTED=false
+REPO_SETTINGS_EXISTED=false
+
+if [[ -d "$REPO_CLAUDE_DIR" ]]; then
+  REPO_CLAUDE_DIR_EXISTED=true
+fi
+if [[ -f "$REPO_SETTINGS_LOCAL" ]]; then
+  REPO_SETTINGS_LOCAL_EXISTED=true
+  cp "$REPO_SETTINGS_LOCAL" "$REPO_SETTINGS_LOCAL_SAVED"
+fi
+if [[ -f "$REPO_SETTINGS" ]]; then
+  REPO_SETTINGS_EXISTED=true
+  cp "$REPO_SETTINGS" "$REPO_SETTINGS_SAVED"
+fi
+
+restore_repo_settings() {
+  if [[ "$REPO_SETTINGS_LOCAL_EXISTED" == true ]]; then
+    cp "$REPO_SETTINGS_LOCAL_SAVED" "$REPO_SETTINGS_LOCAL"
+  else
+    rm -f "$REPO_SETTINGS_LOCAL"
+  fi
+  if [[ "$REPO_SETTINGS_EXISTED" == true ]]; then
+    cp "$REPO_SETTINGS_SAVED" "$REPO_SETTINGS"
+  else
+    rm -f "$REPO_SETTINGS"
+  fi
+  if [[ "$REPO_CLAUDE_DIR_EXISTED" == false ]]; then
+    rmdir "$REPO_CLAUDE_DIR" 2>/dev/null || true
+  fi
+}
+trap 'restore_repo_settings; cleanup' EXIT
+
+mkdir -p "$REPO_CLAUDE_DIR"
+
+local_style_project="${SCRATCH}/local-style-project"
+mkdir -p "$local_style_project/.claude"
+
+shadow_count() {
+  printf '%s\n' "$1" | grep -c 'shadow' || true
+}
+
+caveat_count() {
+  printf '%s\n' "$1" | grep -c 'caveat' || true
+}
+
+# The diagnostic lines alone, so a dry-run comparison ignores the
+# mode-labelled copy/merge/backup lines this task does not change.
+diagnostic_lines() {
+  printf '%s\n' "$1" | grep -E 'shadow|caveat' || true
+}
+
+assert_shadow_warning() {
+  local out="$1" file="$2" shadow_value="$3" deployed_value="$4" frame="$5"
+  local line
+  assert_eq "$(shadow_count "$out")" "1" "expected exactly one shadow warning"
+  line="$(printf '%s\n' "$out" | grep 'shadow')"
+  printf '%s\n' "$line" | grep -qF "$file" ||
+    fail "shadow warning missing the shadowing file path: $file"
+  printf '%s\n' "$line" | grep -qF "$shadow_value" ||
+    fail "shadow warning missing the shadowing value: $shadow_value"
+  printf '%s\n' "$line" | grep -qF "$deployed_value" ||
+    fail "shadow warning missing the deployed value: $deployed_value"
+  printf '%s\n' "$line" | grep -qF '/config' ||
+    fail "shadow warning missing the /config remedy"
+  printf '%s\n' "$line" | grep -qi 'remove' ||
+    fail "shadow warning missing the remove-the-key remedy"
+  printf '%s\n' "$line" | grep -qiF "$frame" ||
+    fail "shadow warning missing its frame: $frame"
+}
+
+assert_global_caveat() {
+  local out="$1" line
+  assert_eq "$(caveat_count "$out")" "1" "expected exactly one global caveat line"
+  line="$(printf '%s\n' "$out" | grep 'caveat')"
+  printf '%s\n' "$line" | grep -qi 'user level' ||
+    fail "caveat line must name the user-level merge"
+  printf '%s\n' "$line" | grep -qi 'overrides' ||
+    fail "caveat line must name the project-level override"
+  printf '%s\n' "$line" | grep -qF '.claude/settings.local.json' ||
+    fail "caveat line must name .claude/settings.local.json"
+}
+
+run_project_style() {
+  HOME="$HOME_DIR" DEPLOYED_ARTIFACTS_LOG="$DEPLOY_LOG" \
+    "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --project-dir "$local_style_project" --type style --target claude "$@"
+}
+
+run_global_style() {
+  HOME="$HOME_DIR" DEPLOYED_ARTIFACTS_LOG="$DEPLOY_LOG" \
+    "$DEPLOY_BASH" "$DEPLOY_SCRIPT" --global --type style --target claude --clear-backups "$@"
+}
+
+reset_local_style_project() {
+  rm -f "$local_style_project/.claude/settings.json" "$local_style_project/.claude/settings.local.json"
+}
+
+# A divergent local value warns with the file, both values, and the remedy.
+reset_local_style_project
+printf '%s\n' '{"outputStyle":"Explanatory"}' > "$local_style_project/.claude/settings.local.json"
+project_shadow="$(run_project_style)" ||
+  fail "project-dir deploy with a shadowed style must exit 0"
+assert_shadow_warning "$project_shadow" \
+  "$local_style_project/.claude/settings.local.json" "Explanatory" "natural-language" \
+  "this project's local settings"
+
+# An agreeing local value stays silent.
+reset_local_style_project
+printf '%s\n' '{"outputStyle":"natural-language"}' > "$local_style_project/.claude/settings.local.json"
+project_agree="$(run_project_style)"
+assert_eq "$(shadow_count "$project_agree")" "0" "agreeing local value must not warn"
+
+# An absent local file stays silent.
+reset_local_style_project
+project_absent="$(run_project_style)"
+assert_eq "$(shadow_count "$project_absent")" "0" "absent local settings must not warn"
+
+# A local file without the key stays silent.
+printf '%s\n' '{"permissions":{"allow":[]}}' > "$local_style_project/.claude/settings.local.json"
+project_no_key="$(run_project_style)"
+assert_eq "$(shadow_count "$project_no_key")" "0" "local settings without outputStyle must not warn"
+
+# A project-dir run never prints the user-level caveat.
+assert_eq "$(caveat_count "$project_shadow")" "0" "project-dir deploy must not print the global caveat"
+
+# Global scope: the caveat is unconditional, and a clean checkout warns nothing.
+printf '%s\n' '{"permissions":{"allow":[]}}' > "$REPO_SETTINGS_LOCAL"
+rm -f "$REPO_SETTINGS"
+global_clean="$(run_global_style)"
+assert_global_caveat "$global_clean"
+assert_eq "$(shadow_count "$global_clean")" "0" "clean checkout settings must not warn"
+
+# Global scope: a divergent value in this checkout's own settings.local.json
+# warns and names that file as the deploy's own repository.
+printf '%s\n' '{"outputStyle":"Explanatory"}' > "$REPO_SETTINGS_LOCAL"
+global_local_shadow="$(run_global_style)"
+assert_global_caveat "$global_local_shadow"
+assert_shadow_warning "$global_local_shadow" \
+  "$REPO_SETTINGS_LOCAL" "Explanatory" "natural-language" \
+  "this deploy's own repository"
+
+# Removing the staged key leaves the caveat and drops the warning.
+printf '%s\n' '{"permissions":{"allow":[]}}' > "$REPO_SETTINGS_LOCAL"
+global_local_clean="$(run_global_style)"
+assert_global_caveat "$global_local_clean"
+assert_eq "$(shadow_count "$global_local_clean")" "0" "removed local key must stop the warning"
+
+# Global scope: a divergent value in this checkout's own settings.json warns
+# the same way. The file is created when absent and removed on exit.
+printf '%s\n' '{"outputStyle":"Learning"}' > "$REPO_SETTINGS"
+global_repo_shadow="$(run_global_style)"
+assert_global_caveat "$global_repo_shadow"
+assert_shadow_warning "$global_repo_shadow" \
+  "$REPO_SETTINGS" "Learning" "natural-language" \
+  "this deploy's own repository"
+
+rm -f "$REPO_SETTINGS"
+global_repo_clean="$(run_global_style)"
+assert_global_caveat "$global_repo_clean"
+assert_eq "$(shadow_count "$global_repo_clean")" "0" "removed settings value must stop the warning"
+
+# Dry runs print the same diagnostic lines as the real run in each scope.
+reset_local_style_project
+printf '%s\n' '{"outputStyle":"Explanatory"}' > "$local_style_project/.claude/settings.local.json"
+project_real="$(run_project_style)"
+project_dry_shadow="$(run_project_style --dry-run)"
+assert_eq "$(diagnostic_lines "$project_real")" "$(diagnostic_lines "$project_dry_shadow")" \
+  "project-dir dry-run diagnostics must match the real run"
+
+printf '%s\n' '{"outputStyle":"Explanatory"}' > "$REPO_SETTINGS_LOCAL"
+rm -f "$REPO_SETTINGS"
+global_real="$(run_global_style)"
+global_dry_shadow="$(run_global_style --dry-run)"
+assert_eq "$(diagnostic_lines "$global_real")" "$(diagnostic_lines "$global_dry_shadow")" \
+  "global dry-run diagnostics must match the real run"
+
+# Leave the checkout as found before the harness exits.
+restore_repo_settings
 
 printf 'Style deployment regression passed\n'

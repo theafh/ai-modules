@@ -1698,3 +1698,22 @@ became a committed template, the uninstall manifest moved to
   directory beside the four standalone global files, and the discard rule.
 - concepts/antigravity-global-roots.md: `### Everything else converges` names
   the modular directory beside the four standalone files.
+
+## [2026-11-26 00:35] update | Report the shadowed output style and caveat the global merge
+
+The Claude style deploy reported its `outputStyle` merge as success even when a
+project settings file outranked it, so a style that never took effect looked
+delivered. The deploy now reports what it can read and states the override for
+everything it cannot.
+
+- concepts/deployment-model.md: `### Per-tool configuration` describes
+  `style:<name>` as the style a Claude deploy merges at its scope, with the
+  three-file precedence chain and the project-level override; `### Global scope
+  is a default, not a guarantee` names the project-dir shadow check, the global
+  check of this checkout, and the unconditional user-level caveat.
+- concepts/output-style-delivery-design.md: the Claude row of `### What the
+  deploy writes per target` names the merge target, the three-file chain, and
+  the project-level override.
+- comparisons/system-prompt-substitution-across-harnesses.md: the Claude row of
+  `### What a global deploy has to write` names the user-level key and the
+  project-level override.

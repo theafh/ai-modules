@@ -2640,6 +2640,42 @@ generate_antigravity_style_rule() {
 }
 
 # ---------------------------------------------------------------------------
+# Report a settings file that shadows the outputStyle a run just merged.
+#
+# Claude resolves outputStyle from three settings files, where local project
+# settings outrank checked-in project settings, which in turn outrank the
+# user-level file. A divergent value in a file that outranks the merge target
+# therefore wins silently, and the run's own merge report would read as success.
+# This reports the shadow with the facts an operator needs to clear it.
+#
+# Args: settings_file deployed_style context
+#   context: "project" for the tree a --project-dir run was pointed at,
+#            "repo" for this checkout under a --global run.
+#
+# A file that is absent, unparseable, carries no outputStyle, or already agrees
+# stays silent, so the report never claims more than the file it read.
+# ---------------------------------------------------------------------------
+report_shadowed_output_style() {
+  local settings_file="$1"
+  local deployed_style="$2"
+  local context="$3"
+
+  [[ -f "$settings_file" ]] || return 0
+
+  local shadow_value
+  shadow_value="$(jq -r 'if (type == "object") and has("outputStyle") then (.outputStyle | if type == "string" then . else tojson end) else empty end' "$settings_file" 2>/dev/null || true)"
+  [[ -n "$shadow_value" ]] || return 0
+  [[ "$shadow_value" != "$deployed_style" ]] || return 0
+
+  local frame="this project's local settings shadow the style just deployed"
+  if [[ "$context" == "repo" ]]; then
+    frame="this deploy's own repository shadows the style it just installed"
+  fi
+
+  warn "shadow" "${frame}: ${settings_file} sets outputStyle to '${shadow_value}', which overrides the '${deployed_style}' deployed here; remove the key from that file or select the style through /config, which writes it there and takes effect immediately"
+}
+
+# ---------------------------------------------------------------------------
 # Install a single artifact into one app target
 # ---------------------------------------------------------------------------
 install_for_app() {
@@ -2963,6 +2999,24 @@ install_for_app() {
             # Conf-sourced scalar: empty hooks_dir, scalar as 7th arg.
             # source for the log column is the deploy config (no JSON file read).
             merge_json_key "$DEPLOYMENT_CONF" "${app_dir}/settings.json" "outputStyle" "$app_id" "$type" "" "$active_style"
+
+            # Report resolution reality after the merge, never inside
+            # merge_json_key, whose dry-run early return precedes its
+            # first-write prior capture and would hide this from a preview.
+            # What outranks the merge target differs by scope.
+            if [[ -n "$PROJECT_DIR" ]]; then
+              # The run was handed this very tree, so its local settings file
+              # is the one file that outranks the merge target here.
+              report_shadowed_output_style "${app_dir}/settings.local.json" "$active_style" "project"
+            else
+              # A global merge lands at user level, which every project
+              # settings file outranks. The run can open only this checkout,
+              # so it checks its own settings files and states the override
+              # rule for every repository it cannot read.
+              report_shadowed_output_style "${REPO_ROOT}/.claude/settings.local.json" "$active_style" "repo"
+              report_shadowed_output_style "${REPO_ROOT}/.claude/settings.json" "$active_style" "repo"
+              info "caveat" "outputStyle '${active_style}' merged at user level; a project-level outputStyle in any repository overrides it — check .claude/settings.local.json in that project"
+            fi
           fi
           ;;
         cursor)

@@ -1,7 +1,7 @@
 ---
 title: Output style delivery design
 created: 2026-08-08
-updated: 2026-11-25
+updated: 2026-11-26
 type: concept
 tags: [output-style, deployment, portability, claude, codex, opencode, antigravity, cursor, copilot]
 sources: [raw/notes/cursor-style-injection-probes-2026-10-06.md]
@@ -65,7 +65,7 @@ style arm becomes the deploy script's first non-plugin asset source, so
 
 | Target | Deploy writes | Activation | Shape |
 | --- | --- | --- | --- |
-| Claude | `~/.claude/output-styles/<name>.md`, verbatim | merge `outputStyle` into the settings file | file plus key |
+| Claude | `~/.claude/output-styles/<name>.md`, verbatim | merge `outputStyle` into the settings file of the deploy scope; Claude resolves the key from `.claude/settings.local.json`, then `.claude/settings.json`, then the user-level file, so a project-level value overrides the deploy | file plus key |
 | Copilot in VS Code | `~/.copilot/instructions/<name>.md`, body only | none, always on | file only |
 | OpenCode | a file under the global config tree, body only | add its path to the `instructions` array | file plus key; route decision open |
 | Codex | a generated instructions file under the Codex configuration tree, synthesized per the whole-prompt mechanism | merge `model_instructions_file` into the user configuration | file plus key, replacing |

@@ -1,7 +1,7 @@
 ---
 title: System prompt substitution across harnesses
 created: 2026-08-08
-updated: 2026-11-21
+updated: 2026-11-26
 type: comparison
 tags: [system-prompt, portability, output-style, claude, codex, opencode, antigravity, cursor, copilot]
 sources: [raw/notes/cursor-style-injection-probes-2026-10-06.md]
@@ -44,7 +44,7 @@ slot whose current contents can be re-derived, edited, and written back.
 
 | Harness | File | Activation |
 | --- | --- | --- |
-| Claude Code | `~/.claude/output-styles/<name>.md` | `outputStyle` key in `~/.claude/settings.json` |
+| Claude Code | `~/.claude/output-styles/<name>.md` | `outputStyle` key in `~/.claude/settings.json`; Claude resolves it from `.claude/settings.local.json`, then `.claude/settings.json`, then the user-level file, so a project-level value overrides the user-level key |
 | OpenAI Codex | instructions file under `~/.codex/` | `model_instructions_file` in `config.toml` |
 | SST OpenCode | agent file, or a path in the `instructions` array | none for `instructions`; agent selection for the replacing route |
 | Cursor | project `.cursor/rules/<name>.mdc` with `alwaysApply: true`; no print-mode-injecting global file path | none for the project write; account User Rules are settings text a deploy cannot write |
