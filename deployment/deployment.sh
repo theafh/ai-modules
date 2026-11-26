@@ -2652,6 +2652,13 @@ generate_antigravity_style_rule() {
 # project root (<project>/.github/instructions) takes the same body under
 # frontmatter carrying applyTo: "**", so the rule is always-on rather than
 # pattern-limited. The scope argument selects the form.
+#
+# VS Code documents automatic activation only for a file carrying applyTo, so the
+# project form's activation is documented while the frontmatter-free user-profile
+# form's is inferred from ~/.copilot/copilot-instructions.md. That inference is
+# recorded as a verification gap in deployment/README.md and the wiki rather than
+# asserted; adding applyTo here would close it only if the user-profile root
+# honours the same matcher, which no page states.
 # ---------------------------------------------------------------------------
 generate_vscode_style_rule() {
   local source="$1"

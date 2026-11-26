@@ -66,7 +66,7 @@ style arm becomes the deploy script's first non-plugin asset source, so
 | Target | Deploy writes | Activation | Shape |
 | --- | --- | --- | --- |
 | Claude | `~/.claude/output-styles/<name>.md`, verbatim | merge `outputStyle` into the settings file of the deploy scope; Claude resolves the key from `.claude/settings.local.json`, then `.claude/settings.json`, then the user-level file, so a project-level value overrides the deploy | file plus key |
-| Copilot in VS Code | generated instructions file at `~/.copilot/instructions/<name>.instructions.md` (global, body only) or `<project>/.github/instructions/<name>.instructions.md` (project, `applyTo: "**"`) | none, always on at either scope; a `--global` run also merges `~/.claude/rules: false` into `chat.instructionsFilesLocations` as an editor-forwarding settings write | file plus key at `--global`; file only at project scope |
+| Copilot in VS Code | generated instructions file at `~/.copilot/instructions/<name>.instructions.md` (global, body only) or `<project>/.github/instructions/<name>.instructions.md` (project, `applyTo: "**"`) | none; the project form is always on through `applyTo: "**"`, while the global body-only form's automatic activation is inferred from `copilot-instructions.md` and recorded as an unverified gap; a `--global` run also merges `~/.claude/rules: false` into `chat.instructionsFilesLocations` as an editor-forwarding settings write | file plus key at `--global`; file only at project scope |
 | OpenCode | a file under the global config tree, body only | add its path to the `instructions` array | file plus key; route decision open |
 | Codex | a generated instructions file under the Codex configuration tree, synthesized per the whole-prompt mechanism | merge `model_instructions_file` into the user configuration | file plus key, replacing |
 | Antigravity | a generated rule file at `~/.gemini/config/rules/<name>.md` (global) or `<project>/.agents/rules/<name>.md` (project), carrying `trigger: always_on` | none, always on | file only, appending; 24,000-byte per-file cap |
@@ -120,9 +120,13 @@ emits that clause with Cursor's defaults, and Antigravity's emits it with
 Antigravity's defaults inside a rule file carrying `trigger: always_on` and
 refuses content over the 24,000-byte per-file cap. Copilot in VS Code emits it
 with Copilot's defaults, under `applyTo: "**"` and the style's description at
-project scope and as the bare body at user scope. Neither target needs a
-placeholder in the source style, because the generation step produces its variant
-without one.
+project scope and as the bare body at user scope. None of the three generated
+targets needs a placeholder in the source style, because the generation step
+produces its variant without one. The user-scope instructions file carries no
+frontmatter, and VS Code documents automatic activation only for a file with
+`applyTo`; that the frontmatter-free user-profile file applies without manual
+attachment is inferred from `copilot-instructions.md` and is recorded here as a
+verification gap rather than asserted as fact.
 
 Codex is the exception, and it is an exception in kind rather than degree. Its
 `model_instructions_file` displaces the built-in instructions with no
