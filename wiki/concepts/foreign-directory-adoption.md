@@ -1,7 +1,7 @@
 ---
 title: Foreign directory adoption
 created: 2026-08-08
-updated: 2026-11-25
+updated: 2026-11-26
 type: concept
 tags: [discovery, portability, claude, opencode, copilot, cursor, antigravity, verification-gap]
 sources: []

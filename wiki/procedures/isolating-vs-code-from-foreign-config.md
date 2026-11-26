@@ -1,7 +1,7 @@
 ---
 title: Isolating VS Code from foreign harness config
 created: 2026-08-09
-updated: 2026-11-25
+updated: 2026-11-26
 type: procedure
 tags: [copilot, claude, codex, discovery, portability, hook]
 sources: []
