@@ -1,7 +1,7 @@
 ---
 title: OpenAI Codex
 created: 2026-08-08
-updated: 2026-10-04
+updated: 2026-11-26
 type: entity
 tags: [codex, skill, agent, hook, plugin, system-prompt, frontmatter, discovery, verification-gap]
 sources: [raw/notes/delegation-probes-2026-10-04.md]
@@ -133,27 +133,38 @@ over with the model lineup. Tool schemas travel separately as a tools JSON, so a
 replacement loses operating prose rather than tool definitions.
 
 The resolved text is readable, which is what makes a substitution possible.
-`codex debug models` renders the model catalog as JSON with a resolved
-`base_instructions` string and an `instructions_template` per model, and that
-output is the only route: the on-disk `~/.codex/models_cache.json` carries no
-base instructions. Any step invoking the binary needs feature detection rather
-than a bare command name, because the executable can sit off `PATH` inside an
-application bundle.
+`codex debug models` renders the installed build's model catalog as JSON, with
+each model's resolved `base_instructions` string beside the
+`instructions_template` it was rendered from, and that render is the
+authoritative source (verified 26 November 2026 against `codex-cli
+0.169.0-alpha.11.1`). The on-disk `~/.codex/models_cache.json` is a snapshot
+rather than an empty cache: each model carries its instructions text as
+`model_messages.instructions_template`, stamped with the `client_version` that
+fetched it, so it can lag the installed build. Any step invoking the binary
+needs feature detection rather than a bare command name, because the
+executable can sit off `PATH` inside an application bundle.
 
 Resolved text is ordinary Markdown organised under named headings covering
 personality and writing style, how to talk to the user, how to format a final
-answer, editing and autonomy rules, destructive actions, and skill use. Both the
-heading set and the overall length vary by model, and neither is documented
-anywhere, so they are internal structure rather than a contract. A generator
-that assembles a prompt by locating those headings re-derives them per model on
-every run and fails loudly when an expected one is gone.
+answer, editing and autonomy rules, and skill use. `# Destructive actions` is a
+heading some models carry rather than a universal member of the set: the
+`gpt-5.6` and `gpt-daybreak` models and the `codex-auto-review` model carry it,
+while the `gpt-6` family omits it (verified 26 November 2026 across the twelve
+models in the installed catalog). Both the heading set and the overall length
+vary by model, and neither is documented anywhere, so they are internal
+structure rather than a contract. A generator that assembles a prompt by
+locating those headings re-derives them per model on every run and fails loudly
+when an expected one is gone.
 
 ### Personality, verbosity, and profiles
 
-`personality` is a closed enum of `none`, `friendly`, and `pragmatic`, honoured
-only by models advertising `supportsPersonality`, and it is the one setting
-switchable inside a running session through `/personality` or a per-thread
-override. `model_verbosity` takes `low`, `medium`, or `high` on Responses API
+`personality` is a deprecated compatibility setting, sourced from the
+`personality` entry in the configuration reference
+(`learn.chatgpt.com/docs/config-file/config-reference`, read 25 November 2026).
+It takes `none`, `friendly`, or `pragmatic`; `friendly` and `pragmatic` no
+longer select a style, and `none` scopes to the built-in personality section it
+would otherwise compose while leaving an explicit instruction override
+unchanged. `model_verbosity` takes `low`, `medium`, or `high` on Responses API
 providers.
 
 A profile is `~/.codex/<profile>.config.toml`, selected with `--profile <name>`

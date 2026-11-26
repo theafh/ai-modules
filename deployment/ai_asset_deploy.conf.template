@@ -5,7 +5,9 @@
 #                         Glob patterns supported (* matches within a segment, ** matches across segments)
 #   replace:path VAR=value Replace $VAR$ inside matching deployed copies. A trailing slash
 #                         applies to a whole subtree.
-#   style:<name>           Active output-style name for that tool (read by the Claude arm only, which merges it as settings outputStyle)
+#   style:<name>           Active output-style name for that tool (read by the Claude and Codex
+#                         arms: Claude merges settings outputStyle, Codex derives the instructions
+#                         file and sets model_instructions_file)
 #
 # Assets not listed under a tool section are deployed to that tool.
 # Assets listed under disallow: are skipped for that tool.

@@ -1750,3 +1750,18 @@ reverse are corrected.
 - procedures/isolating-vs-code-from-foreign-config.md: the rule and its paragraph
   are split the same way, and the unverified sentence is replaced with the
   forwarding statement from the migration page.
+
+## [2026-11-26 04:48] update | Correct the Codex instructions-slot and personality account
+
+The Codex output-style deploy re-derived the model catalog from an installed
+build, which settled three stale passages on the entity page.
+
+- entities/openai-codex.md: `### The single instructions slot` records
+  `model_messages.instructions_template` as the cache field carrying each
+  model's instructions text, stamped with its fetching client version, while
+  `codex debug models` remains the authoritative render (verified 26 November
+  2026); the heading inventory records `# Destructive actions` as a heading some
+  models carry rather than a universal member; `### Personality, verbosity, and
+  profiles` records `personality` as a deprecated compatibility setting whose
+  `friendly` and `pragmatic` values no longer select a style, sourced from the
+  configuration reference's `personality` entry (25 November 2026).

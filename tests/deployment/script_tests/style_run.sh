@@ -799,4 +799,725 @@ assert_eq "$(diagnostic_lines "$global_real")" "$(diagnostic_lines "$global_dry_
 assert_eq "$(repo_claude_snapshot)" "$repo_claude_before" \
   "style harness must leave this checkout's .claude settings untouched"
 
+# ---------------------------------------------------------------------------
+# Codex: whole-prompt style derivation
+#
+# Codex carries one instructions slot, so the style deploy derives the
+# configured model's base instructions from `codex debug models`, substitutes
+# the style-owned headings, and points model_instructions_file at the result.
+# Every scenario below runs from its own scratch HOME and deploy log, and the
+# stub binary answers `--version` and the catalog call with fixture text.
+# ---------------------------------------------------------------------------
+CODEX_SCRATCH="${SCRATCH}/codex"
+CODEX_REPO="${CODEX_SCRATCH}/repo"
+CODEX_EMPTY_APPS="${CODEX_SCRATCH}/no-applications"
+mkdir -p "$CODEX_SCRATCH" "$CODEX_EMPTY_APPS"
+mkdir -p "$CODEX_REPO/deployment" "$CODEX_REPO/plugins"
+cp "$REPO_ROOT/deployment/deployment.sh" "$CODEX_REPO/deployment/deployment.sh"
+cp "$REPO_ROOT/deployment/ai_asset_deploy.conf.template" "$CODEX_REPO/deployment/ai_asset_deploy.conf.template"
+cp -R "$REPO_ROOT/styles" "$CODEX_REPO/styles"
+CODEX_DEPLOY="${CODEX_REPO}/deployment/deployment.sh"
+CODEX_STUB_VERSION="codex-cli 9.9.9-test"
+
+codex_plain() {
+  perl -pe 's/\e\[[0-9;]*m//g'
+}
+
+assert_present() {  # file pattern message
+  grep -qF -- "$2" "$1" || fail "$3"
+}
+
+assert_present_re() {  # file pattern message
+  grep -qE -- "$2" "$1" || fail "$3"
+}
+
+assert_absent() {  # file pattern message
+  if grep -qF -- "$2" "$1"; then fail "$3"; fi
+}
+
+assert_absent_re() {  # file pattern message
+  if grep -qE -- "$2" "$1"; then fail "$3"; fi
+}
+
+assert_span_identical() {  # derived generated heading
+  python3 - "$1" "$2" "$3" <<'PY' || fail "untouched heading span changed: $3"
+import re
+import sys
+
+def span(path, heading):
+    lines = open(path, encoding="utf-8").read().splitlines()
+    heads = [i for i, line in enumerate(lines) if re.match(r"^#{1,6} ", line)]
+    for position, index in enumerate(heads):
+        if lines[index] == heading:
+            end = heads[position + 1] if position + 1 < len(heads) else len(lines)
+            return lines[index:end]
+    return None
+
+derived = span(sys.argv[1], sys.argv[3])
+generated = span(sys.argv[2], sys.argv[3])
+if derived is None or generated is None or derived != generated:
+    sys.exit(1)
+PY
+}
+
+assert_paragraphs() {  # file text message
+  python3 - "$1" "$2" <<'PY' || fail "$3"
+import sys
+paras = [p.strip() for p in open(sys.argv[1], encoding="utf-8").read().split("\n\n")]
+if sys.argv[2] not in paras:
+    sys.exit(1)
+PY
+}
+
+codex_catalog() {  # out slug derived
+  jq -n --rawfile bi "$3" --arg slug "$2" \
+    '{models:[{slug:$slug,base_instructions:$bi}]}' > "$1"
+}
+
+make_codex_stub() {  # path catalog version [mode]
+  local path="$1" catalog="$2" version="$3" mode="${4:-ok}"
+  mkdir -p "$(dirname "$path")"
+  {
+    printf '%s\n' '#!/bin/sh'
+    printf '%s\n' 'case "$1" in'
+    printf '  --version) echo "%s" ;;\n' "$version"
+    if [[ "$mode" == "fail" ]]; then
+      printf '%s\n' '  debug) echo "catalog unavailable" >&2; exit 7 ;;'
+    else
+      printf '  debug) cat "%s" ;;\n' "$catalog"
+    fi
+    printf '%s\n' '  *) exit 1 ;;'
+    printf '%s\n' 'esac'
+  } > "$path"
+  chmod +x "$path"
+}
+
+seed_codex_home() {  # home [model] [extra-toml]
+  local home="$1" model="${2-gpt-test}" extra="${3:-}"
+  mkdir -p "$home/.codex" "$home/.ai_asset_deploy"
+  : > "$home/.codex/config.toml"
+  if [[ -n "$model" ]]; then printf 'model = "%s"\n' "$model" >> "$home/.codex/config.toml"; fi
+  if [[ -n "$extra" ]]; then printf '%s\n' "$extra" >> "$home/.codex/config.toml"; fi
+  cp "$CONF_TEMPLATE" "$home/.ai_asset_deploy/config"
+  printf '\n#codex\nstyle:natural-language\n' >> "$home/.ai_asset_deploy/config"
+}
+
+codex_run() {  # home log system-root args...
+  local home="$1" log="$2" sysroot="$3"
+  shift 3
+  HOME="$home" CODEX_HOME="" CODEX_SYSTEM_BUNDLE_ROOT="$sysroot" \
+    DEPLOYED_ARTIFACTS_LOG="$log" "$DEPLOY_BASH" "$CODEX_DEPLOY" "$@"
+}
+
+codex_run_bin() {  # home log system-root bin args...
+  local home="$1" log="$2" sysroot="$3" bin="$4"
+  shift 4
+  HOME="$home" CODEX_HOME="" CODEX_BIN="$bin" CODEX_SYSTEM_BUNDLE_ROOT="$sysroot" \
+    DEPLOYED_ARTIFACTS_LOG="$log" "$DEPLOY_BASH" "$CODEX_DEPLOY" "$@"
+}
+
+codex_run_home() {  # home log system-root codex-home args...
+  local home="$1" log="$2" sysroot="$3" codexhome="$4"
+  shift 4
+  HOME="$home" CODEX_HOME="$codexhome" CODEX_SYSTEM_BUNDLE_ROOT="$sysroot" \
+    DEPLOYED_ARTIFACTS_LOG="$log" "$DEPLOY_BASH" "$CODEX_DEPLOY" "$@"
+}
+
+# --- Static documentation and configuration checks ---
+assert_present "$CODEX_DEPLOY" 'read by the Claude and Codex' \
+  "deployment.sh style directive must name both arms"
+assert_present "$CONF_TEMPLATE" 'Claude and Codex' \
+  "config template style directive must name both arms"
+if grep -qE '^[[:space:]]*style:' "$CONF_TEMPLATE"; then
+  fail "committed config template must carry no style: activation"
+fi
+assert_present "$REPO_ROOT/deployment/README.md" 'The Claude arm merges settings `outputStyle` at the deploy scope; the Codex arm derives' \
+  "README style directive row must name both arms"
+codex_row="$(grep -F '| OpenAI Codex |' "$REPO_ROOT/deployment/README.md" | head -n 1)"
+printf '%s\n' "$codex_row" | grep -qF 'not yet' &&
+  fail "README Codex Target Layout Styles cell must no longer read 'not yet'"
+printf '%s\n' "$codex_row" | grep -qF 'model_instructions_file' ||
+  fail "README Codex Target Layout Styles cell must name the configuration key"
+grep -F '| style (`styles/*.md`) | OpenAI Codex |' "$REPO_ROOT/deployment/README.md" >/dev/null ||
+  fail "README Generated Formats must gain a Codex style row"
+readme_codex_style="$(grep -F '| style (`styles/*.md`) | OpenAI Codex |' "$REPO_ROOT/deployment/README.md")"
+printf '%s\n' "$readme_codex_style" | grep -qF 'codex debug models' ||
+  fail "README Codex style row must name the derivation source"
+printf '%s\n' "$readme_codex_style" | grep -qF '# Personality' ||
+  fail "README Codex style row must name a substituted section"
+printf '%s\n' "$readme_codex_style" | grep -qF 'fails loudly' ||
+  fail "README Codex style row must name the fail-loudly behaviour"
+printf '%s\n' "$readme_codex_style" | grep -qF 'does not re-derive' ||
+  fail "README Codex style row must state that the value does not re-derive"
+
+# The fixture is shaped like the configured model: Technical communication and
+# its PR subsection are present, Formatting rules sits beside Final answer, and
+# two template tokens survive in an untouched section.
+CODEX_DERIVED="${CODEX_SCRATCH}/derived.md"
+cat > "$CODEX_DERIVED" <<'EOF'
+You are Codex, an agent based on GPT-Test. You and the user share one workspace.
+
+# Personality
+
+OLD PERSONALITY BODY.
+
+## Writing style
+
+OLD WRITING BODY.
+
+## Technical communication
+
+Use plain language over jargon.
+
+### Writing PR descriptions
+
+OLD PR BODY.
+
+# Working with the user
+
+USER INTRO.
+
+## Intermediate commentary
+
+COMMENTARY SENTINEL.
+
+## Final answer
+
+OLD FINAL BODY.
+
+### Formatting rules
+
+Your answer is being rendered by an application for the user
+FORMATTING SENTINEL.
+
+### Visualizations
+
+VISUALIZATION SENTINEL.
+
+# Rules for getting work done
+
+RULES SENTINEL.
+
+# Using skills
+
+SKILLS SENTINEL.
+
+# Apps (Connectors)
+
+Token {{connector_id}} and {{plugin_id}} stay.
+EOF
+CODEX_CATALOG="${CODEX_SCRATCH}/catalog.json"
+codex_catalog "$CODEX_CATALOG" "gpt-test" "$CODEX_DERIVED"
+
+# --- No binary: a clean skip, no write, no key ---
+C1_HOME="${CODEX_SCRATCH}/c1-home"
+C1_LOG="${CODEX_SCRATCH}/c1.log"
+seed_codex_home "$C1_HOME" "gpt-test"
+c1_out="$(codex_run "$C1_HOME" "$C1_LOG" "$CODEX_EMPTY_APPS" --global --type style --target codex --dry-run 2>&1)"
+c1_plain="$(printf '%s\n' "$c1_out" | codex_plain)"
+printf '%s\n' "$c1_plain" | grep -q 'no Codex binary found' ||
+  fail "no-binary dry run must report a clean skip"
+if printf '%s\n' "$c1_plain" | grep -qE 'would-gen|would-merge'; then
+  fail "no-binary dry run must report neither a generated-file write nor a key merge"
+fi
+[[ ! -e "${C1_HOME}/.codex/instructions/natural-language.md" ]] ||
+  fail "no-binary dry run must write no generated file"
+assert_absent "${C1_HOME}/.codex/config.toml" 'model_instructions_file' \
+  "no-binary dry run must write no configuration key"
+
+# --- CODEX_BIN stub: one generated-file write and one key merge in a dry run ---
+C2_HOME="${CODEX_SCRATCH}/c2-home"
+C2_LOG="${CODEX_SCRATCH}/c2.log"
+C2_STUB="${CODEX_SCRATCH}/c2-bin/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"
+seed_codex_home "$C2_HOME" "gpt-test"
+make_codex_stub "$C2_STUB" "$CODEX_CATALOG" "$CODEX_STUB_VERSION"
+c2_out="$(codex_run_bin "$C2_HOME" "$C2_LOG" "$CODEX_EMPTY_APPS" "$C2_STUB" --global --type style --target codex --dry-run 2>&1)"
+c2_plain="$(printf '%s\n' "$c2_out" | codex_plain)"
+assert_eq "$(printf '%s\n' "$c2_plain" | grep -c 'would-gen' || true)" "1" \
+  "CODEX_BIN dry run must report exactly one generated-file write"
+assert_eq "$(printf '%s\n' "$c2_plain" | grep -c 'would-merge' || true)" "1" \
+  "CODEX_BIN dry run must report exactly one configuration key merge"
+printf '%s\n' "$c2_plain" | grep -qF "${C2_HOME}/.codex/instructions/natural-language.md" ||
+  fail "CODEX_BIN dry run must name the generated-file destination"
+printf '%s\n' "$c2_plain" | grep -qF "${C2_HOME}/.codex/config.toml" ||
+  fail "CODEX_BIN dry run must name the configuration file"
+[[ ! -e "${C2_HOME}/.codex/instructions/natural-language.md" ]] ||
+  fail "dry run must not write the generated file"
+
+# --- HOME-bundle stub: real deploy, substitutions, untouched spans ---
+C3_HOME="${CODEX_SCRATCH}/c3-home"
+C3_LOG="${CODEX_SCRATCH}/c3.log"
+C3_STUB="${C3_HOME}/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"
+seed_codex_home "$C3_HOME" "gpt-test"
+make_codex_stub "$C3_STUB" "$CODEX_CATALOG" "$CODEX_STUB_VERSION"
+c3_out="$(codex_run "$C3_HOME" "$C3_LOG" "$CODEX_EMPTY_APPS" --global --type style --target codex --clear-backups 2>&1)"
+c3_plain="$(printf '%s\n' "$c3_out" | codex_plain)"
+printf '%s\n' "$c3_plain" | grep -q 'generated' ||
+  fail "HOME-bundle deploy must report the generated file"
+printf '%s\n' "$c3_plain" | grep -q 'merged' ||
+  fail "HOME-bundle deploy must report the configuration merge"
+printf '%s\n' "$c3_plain" | grep -q 'no Codex binary' &&
+  fail "HOME-bundle deploy must not report the no-binary skip"
+
+C3_FILE="${C3_HOME}/.codex/instructions/natural-language.md"
+assert_file "$C3_FILE"
+assert_present "$C3_FILE" "Model: gpt-test" "generated header must name the configured model"
+assert_present "$C3_FILE" "Codex version: ${CODEX_STUB_VERSION}" \
+  "generated header must name the version the stub reported"
+
+assert_absent "$C3_FILE" 'OLD PERSONALITY BODY' "Personality body must be replaced"
+assert_present "$C3_FILE" 'Write like one person explaining something to another' \
+  "Personality must carry the style objective"
+assert_absent "$C3_FILE" 'OLD WRITING BODY' "Writing style body must be replaced"
+assert_present "$C3_FILE" 'A plain fact can take ten words' \
+  "Writing style must carry the style sentence rules"
+assert_absent "$C3_FILE" 'OLD FINAL BODY' "Final answer body must be replaced"
+assert_present "$C3_FILE" 'In a chat answer, the answer is in the first sentence.' \
+  "Final answer must carry the style validations"
+assert_absent "$C3_FILE" 'plain language over jargon' \
+  "Technical communication clause must be removed"
+assert_absent_re "$C3_FILE" '^## Technical communication$' \
+  "Technical communication heading must be removed"
+assert_absent_re "$C3_FILE" '^### Writing PR descriptions$' \
+  "Writing PR descriptions heading must be removed"
+assert_present "$C3_FILE" 'COMMENTARY SENTINEL.' \
+  "Intermediate commentary must survive"
+assert_present "$C3_FILE" 'VISUALIZATION SENTINEL.' \
+  "Visualizations must survive"
+assert_present "$C3_FILE" 'Your answer is being rendered by an application for the user' \
+  "Formatting rules must survive"
+assert_present "$C3_FILE" 'FORMATTING SENTINEL.' "Formatting rules body must survive"
+assert_present "$C3_FILE" 'RULES SENTINEL.' "Operating sections must survive"
+assert_present "$C3_FILE" 'SKILLS SENTINEL.' "Skill section must survive"
+
+assert_span_identical "$CODEX_DERIVED" "$C3_FILE" '# Working with the user'
+assert_span_identical "$CODEX_DERIVED" "$C3_FILE" '## Intermediate commentary'
+assert_span_identical "$CODEX_DERIVED" "$C3_FILE" '### Visualizations'
+assert_span_identical "$CODEX_DERIVED" "$C3_FILE" '### Formatting rules'
+assert_span_identical "$CODEX_DERIVED" "$C3_FILE" '# Rules for getting work done'
+assert_span_identical "$CODEX_DERIVED" "$C3_FILE" '# Using skills'
+assert_span_identical "$CODEX_DERIVED" "$C3_FILE" '# Apps (Connectors)'
+
+for tag in '<focus>' '<sentence_style>' '<paragraphs>' '<rule>' '<lists>' '<validation>' '<natural_language>'; do
+  assert_absent "$C3_FILE" "$tag" "generated file must carry no style-body tag: $tag"
+done
+assert_absent "$C3_FILE" 'keep-coding-instructions' \
+  "generated file must not reference Claude's flag mechanism"
+assert_absent "$C3_FILE" 'force-for-plugin' \
+  "generated file must carry no Claude output-style key"
+assert_present "$C3_FILE" '<engineering_behavior>The wording rules govern prose. Coding, tool-use, and verification behaviour come from the Codex operating sections kept from the derived text.</engineering_behavior>' \
+  "generated file must carry the Codex engineering-behaviour clause"
+
+assert_eq "$(grep -cF 'These rules govern documents and other multi-paragraph text.' "$C3_FILE" || true)" "1" \
+  "paragraphs lead-in must appear once"
+assert_paragraphs "$C3_FILE" 'These rules govern documents and other multi-paragraph text.' \
+  "paragraphs lead-in must be a paragraph of its own"
+assert_paragraphs "$C3_FILE" 'In a chat answer, put the answer in the first sentence. Add only what the reader needs after it.' \
+  "answer_first must be a paragraph of its own"
+assert_paragraphs "$C3_FILE" 'In a chat answer, answer the question that was asked. Leave out background, alternatives, and history the reader did not ask for.' \
+  "answer_what_was_asked must be a paragraph of its own"
+assert_paragraphs "$C3_FILE" "$(sed -n 's/^    <one_theme>\(.*\)<\/one_theme>$/\1/p' "$REPO_ROOT/styles/natural-language.md")" \
+  "one_theme must be a paragraph of its own"
+assert_paragraphs "$C3_FILE" "$(sed -n 's/^    <section_lead>\(.*\)<\/section_lead>$/\1/p' "$REPO_ROOT/styles/natural-language.md")" \
+  "section_lead must be a paragraph of its own"
+assert_paragraphs "$C3_FILE" "$(sed -n 's/^    <short_sentences>\(.*\)<\/short_sentences>$/\1/p' "$REPO_ROOT/styles/natural-language.md")" \
+  "short_sentences must be a paragraph of its own"
+assert_paragraphs "$C3_FILE" "$(sed -n 's/^    <one_idea>\(.*\)<\/one_idea>$/\1/p' "$REPO_ROOT/styles/natural-language.md")" \
+  "one_idea must be a paragraph of its own"
+
+assert_eq "$(grep -o '{{' "$C3_FILE" | wc -l | tr -d '[:space:]')" "2" \
+  "generated file must carry exactly the two derived template tokens"
+assert_present "$C3_FILE" '{{connector_id}}' "connector token must survive byte-for-byte"
+assert_present "$C3_FILE" '{{plugin_id}}' "plugin token must survive byte-for-byte"
+
+replaced_line="$(grep '^Replaced headings:' "$C3_FILE")"
+untouched_line="$(grep '^Untouched headings:' "$C3_FILE")"
+for heading in '# Personality' '## Writing style' '## Final answer' '## Technical communication' '### Writing PR descriptions'; do
+  printf '%s\n' "$replaced_line" | grep -qF "$heading" ||
+    fail "replaced-headings header must list: $heading"
+done
+printf '%s\n' "$replaced_line" | grep -qF '### Formatting rules' &&
+  fail "Formatting rules must not be listed among the replaced headings"
+for heading in '# Working with the user' '## Intermediate commentary' '### Visualizations'; do
+  printf '%s\n' "$untouched_line" | grep -qF "$heading" ||
+    fail "untouched-headings header must list: $heading"
+done
+
+python3 - "$C3_HOME/.codex/config.toml" "$C3_FILE" <<'PY' || fail "Codex config must parse as TOML and point at the generated file"
+import sys, tomllib
+data = tomllib.load(open(sys.argv[1], "rb"))
+if data.get("model_instructions_file") != sys.argv[2]:
+    sys.exit(1)
+PY
+assert_eq "$(awk -F'\t' -v p="${C3_HOME}/.codex/config.toml[model_instructions_file]" '$1==p{print $5; exit}' "$C3_LOG")" "@absent" \
+  "first-write prior for the missing key must be @absent"
+assert_eq "$(grep -cF "${C3_FILE}"$'\t' "$C3_LOG" || true)" "1" \
+  "one deploy must log exactly one line for the generated file"
+
+# --- Overwrite: a stale generated file is replaced by a fresh derivation ---
+printf '%s\n' 'SENTINEL BODY' 'Model: other-model' 'Codex version: codex-cli 0.0.1' > "$C3_FILE"
+codex_run "$C3_HOME" "$C3_LOG" "$CODEX_EMPTY_APPS" --global --type style --target codex --clear-backups >/dev/null
+assert_absent "$C3_FILE" 'SENTINEL BODY' "redeploy must replace stale generated content"
+assert_absent "$C3_FILE" 'Model: other-model' "redeploy must replace the stale model header"
+assert_present "$C3_FILE" 'Model: gpt-test' "redeploy must name the current model"
+assert_present "$C3_FILE" "Codex version: ${CODEX_STUB_VERSION}" \
+  "redeploy must name the current Codex version"
+
+# --- A derived text shaped like gpt-6.2-astra: Final answer under Personality ---
+# Proved by sourcing the deploy script and calling the derivation function
+# directly, as the acceptance asks, so the substitution is exercised on that
+# shape without depending on a model choice.
+C3B_HOME="${CODEX_SCRATCH}/c3b-home"
+C3B_LOG="${CODEX_SCRATCH}/c3b.log"
+C3B_DEST="${C3B_HOME}/.codex/instructions/natural-language.md"
+seed_codex_home "$C3B_HOME" "gpt-test"
+C3B_DERIVED="${CODEX_SCRATCH}/c3b-derived.md"
+cat > "$C3B_DERIVED" <<'EOF'
+# Personality
+
+OLD PERSONALITY BODY.
+
+## Final answer
+
+OLD FINAL BODY.
+
+## Writing style
+
+OLD WRITING BODY.
+
+## Technical communication
+
+Use plain language over jargon.
+
+### Writing PR descriptions
+
+OLD PR BODY.
+
+# Working with the user
+
+USER INTRO.
+
+## Intermediate commentary
+
+COMMENTARY SENTINEL.
+
+### Visualizations
+
+VISUALIZATION SENTINEL.
+EOF
+C3B_CATALOG="${CODEX_SCRATCH}/c3b-catalog.json"
+codex_catalog "$C3B_CATALOG" "gpt-test" "$C3B_DERIVED"
+C3B_STUB="${CODEX_SCRATCH}/c3b-bin/codex"
+make_codex_stub "$C3B_STUB" "$C3B_CATALOG" "$CODEX_STUB_VERSION"
+(
+  set -- --uninstall
+  DEPLOYMENT_SH_SKIP_MAIN=1
+  HOME="$C3B_HOME"
+  unset CODEX_HOME
+  export HOME
+  # shellcheck source=/dev/null
+  source "$CODEX_DEPLOY"
+  CODEX_BIN="$C3B_STUB"
+  CODEX_SYSTEM_BUNDLE_ROOT="$CODEX_EMPTY_APPS"
+  DEPLOYED_ARTIFACTS_LOG="$C3B_LOG"
+  DRY_RUN=false
+  generate_codex_style_file "$REPO_ROOT/styles/natural-language.md" "$C3B_DEST" "codex" "style"
+)
+assert_file "$C3B_DEST"
+assert_absent "$C3B_DEST" 'OLD PERSONALITY BODY' "6.2 shape: Personality must be replaced"
+assert_present "$C3B_DEST" 'Write like one person explaining something to another' \
+  "6.2 shape: Personality must carry the style objective"
+assert_absent "$C3B_DEST" 'OLD FINAL BODY' "6.2 shape: Final answer must be replaced"
+assert_present "$C3B_DEST" 'In a chat answer, the answer is in the first sentence.' \
+  "6.2 shape: Final answer must carry the style validations"
+assert_absent "$C3B_DEST" 'OLD WRITING BODY' "6.2 shape: Writing style must be replaced"
+assert_absent "$C3B_DEST" 'plain language over jargon' "6.2 shape: removed clause must be gone"
+assert_span_identical "$C3B_DERIVED" "$C3B_DEST" '# Working with the user'
+assert_span_identical "$C3B_DERIVED" "$C3B_DEST" '## Intermediate commentary'
+assert_span_identical "$C3B_DERIVED" "$C3B_DEST" '### Visualizations'
+c3b_replaced="$(grep '^Replaced headings:' "$C3B_DEST")"
+for heading in '# Personality' '## Writing style' '## Final answer'; do
+  printf '%s\n' "$c3b_replaced" | grep -qF "$heading" ||
+    fail "6.2 shape: replaced-headings header must list: $heading"
+done
+
+# --- A config with no model key skips the style and writes nothing ---
+C4_HOME="${CODEX_SCRATCH}/c4-home"
+C4_LOG="${CODEX_SCRATCH}/c4.log"
+seed_codex_home "$C4_HOME" ""
+C4_STUB="${C4_HOME}/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"
+make_codex_stub "$C4_STUB" "$CODEX_CATALOG" "$CODEX_STUB_VERSION"
+c4_out="$(codex_run "$C4_HOME" "$C4_LOG" "$CODEX_EMPTY_APPS" --global --type style --target codex --clear-backups 2>&1)"
+c4_plain="$(printf '%s\n' "$c4_out" | codex_plain)"
+printf '%s\n' "$c4_plain" | grep -q 'no model key' ||
+  fail "a config with no model key must skip with a warning"
+[[ ! -e "${C4_HOME}/.codex/instructions/natural-language.md" ]] ||
+  fail "a config with no model key must write no generated file"
+assert_absent "${C4_HOME}/.codex/config.toml" 'model_instructions_file' \
+  "a config with no model key must write no configuration key"
+
+# --- TOML preservation: other keys, a table, and comments survive ---
+C5_HOME="${CODEX_SCRATCH}/c5-home"
+C5_LOG="${CODEX_SCRATCH}/c5.log"
+seed_codex_home "$C5_HOME" "gpt-test"
+C5_STUB="${C5_HOME}/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"
+make_codex_stub "$C5_STUB" "$CODEX_CATALOG" "$CODEX_STUB_VERSION"
+cat > "$C5_HOME/.codex/config.toml" <<'EOF'
+# top comment kept
+model = "gpt-test" # trailing comment kept
+model_reasoning_effort = "xhigh"
+
+[profiles.fast]
+model = "gpt-other"
+EOF
+codex_run "$C5_HOME" "$C5_LOG" "$CODEX_EMPTY_APPS" --global --type style --target codex --clear-backups >/dev/null
+python3 - "$C5_HOME/.codex/config.toml" "${C5_HOME}/.codex/instructions/natural-language.md" <<'PY' || fail "TOML merge must keep every other key, table, and comment"
+import sys, tomllib
+text = open(sys.argv[1], encoding="utf-8").read()
+data = tomllib.loads(text)
+assert data["model"] == "gpt-test"
+assert data["model_reasoning_effort"] == "xhigh"
+assert data["profiles"]["fast"]["model"] == "gpt-other"
+assert data["model_instructions_file"] == sys.argv[2]
+assert "# top comment kept" in text
+assert "# trailing comment kept" in text
+PY
+
+# --- Prior restore: an existing key comes back on uninstall ---
+C6_HOME="${CODEX_SCRATCH}/c6-home"
+C6_LOG="${CODEX_SCRATCH}/c6.log"
+seed_codex_home "$C6_HOME" "gpt-test"
+C6_STUB="${C6_HOME}/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"
+make_codex_stub "$C6_STUB" "$CODEX_CATALOG" "$CODEX_STUB_VERSION"
+printf 'model_instructions_file = "/prior/instructions.md"\n' >> "$C6_HOME/.codex/config.toml"
+codex_run "$C6_HOME" "$C6_LOG" "$CODEX_EMPTY_APPS" --global --type style --target codex --clear-backups >/dev/null
+c6_out="$(codex_run "$C6_HOME" "$C6_LOG" "$CODEX_EMPTY_APPS" --uninstall --global --type style --target codex 2>&1)"
+c6_plain="$(printf '%s\n' "$c6_out" | codex_plain)"
+printf '%s\n' "$c6_plain" | grep -q 'removed' ||
+  fail "uninstall must report the restored configuration entry removed"
+printf '%s\n' "$c6_plain" | grep -q 'failed' &&
+  fail "uninstall must not report a restored configuration entry failed"
+python3 - "$C6_HOME/.codex/config.toml" <<'PY' || fail "uninstall must restore the original model_instructions_file value"
+import sys, tomllib
+data = tomllib.load(open(sys.argv[1], "rb"))
+if data.get("model_instructions_file") != "/prior/instructions.md":
+    sys.exit(1)
+PY
+assert_eq "$(grep -c 'model_instructions_file' "$C6_LOG" || true)" "0" \
+  "uninstall must leave no log line for the restored key"
+
+# --- Missing style-owned heading: fail loudly, write nothing, other targets still deploy ---
+C7_HOME="${CODEX_SCRATCH}/c7-home"
+C7_LOG="${CODEX_SCRATCH}/c7.log"
+seed_codex_home "$C7_HOME" "gpt-test"
+printf '\n#claude\nstyle:natural-language\n' >> "$C7_HOME/.ai_asset_deploy/config"
+C7_STUB="${C7_HOME}/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"
+C7_DERIVED="${CODEX_SCRATCH}/c7-derived.md"
+cat > "$C7_DERIVED" <<'EOF'
+# Personality
+
+OLD PERSONALITY BODY.
+
+## Final answer
+
+OLD FINAL BODY.
+
+# Working with the user
+
+USER INTRO.
+EOF
+C7_CATALOG="${CODEX_SCRATCH}/c7-catalog.json"
+codex_catalog "$C7_CATALOG" "gpt-test" "$C7_DERIVED"
+make_codex_stub "$C7_STUB" "$C7_CATALOG" "$CODEX_STUB_VERSION"
+c7_out="$(codex_run "$C7_HOME" "$C7_LOG" "$CODEX_EMPTY_APPS" --global --type style --target codex,claude --clear-backups 2>&1)"
+c7_plain="$(printf '%s\n' "$c7_out" | codex_plain)"
+printf '%s\n' "$c7_plain" | grep -qF "missing style-owned heading(s) '## Writing style' in the Codex ${CODEX_STUB_VERSION} catalog" ||
+  fail "missing heading must name the heading and the Codex version"
+printf '%s\n' "$c7_plain" | grep -q 'failed' ||
+  fail "missing heading must fail the Codex style"
+[[ ! -e "${C7_HOME}/.codex/instructions/natural-language.md" ]] ||
+  fail "missing heading must write no generated file"
+assert_absent "${C7_HOME}/.codex/config.toml" 'model_instructions_file' \
+  "missing heading must write no configuration key"
+assert_file "${C7_HOME}/.claude/output-styles/natural-language.md"
+
+# --- Catalog read failures skip only the Codex style ---
+C8_HOME="${CODEX_SCRATCH}/c8-home"
+C8_LOG="${CODEX_SCRATCH}/c8.log"
+seed_codex_home "$C8_HOME" "gpt-test"
+C8_DEST="${C8_HOME}/.codex/instructions/natural-language.md"
+C8_FAIL_STUB="${CODEX_SCRATCH}/c8-fail-bin/codex"
+make_codex_stub "$C8_FAIL_STUB" "$CODEX_CATALOG" "$CODEX_STUB_VERSION" fail
+c8_out="$(
+  (
+    set -- --uninstall
+    DEPLOYMENT_SH_SKIP_MAIN=1
+    HOME="$C8_HOME"
+    unset CODEX_HOME
+    export HOME
+    # shellcheck source=/dev/null
+    source "$CODEX_DEPLOY"
+    CODEX_BIN="$C8_FAIL_STUB"
+    CODEX_SYSTEM_BUNDLE_ROOT="$CODEX_EMPTY_APPS"
+    DEPLOYED_ARTIFACTS_LOG="$C8_LOG"
+    DRY_RUN=false
+    generate_codex_style_file "$REPO_ROOT/styles/natural-language.md" "$C8_DEST" "codex" "style"
+  ) 2>&1
+)"
+c8_plain="$(printf '%s\n' "$c8_out" | codex_plain)"
+printf '%s\n' "$c8_plain" | grep -q 'debug models failed' ||
+  fail "a failing catalog render must name the cause"
+[[ ! -e "$C8_DEST" ]] || fail "a failing catalog render must write no generated file"
+assert_absent "${C8_HOME}/.codex/config.toml" 'model_instructions_file' \
+  "a failing catalog render must write no configuration key"
+# A full run with the same failure still deploys every other target.
+printf '\n#claude\nstyle:natural-language\n' >> "$C8_HOME/.ai_asset_deploy/config"
+C8_STUB="${C8_HOME}/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"
+make_codex_stub "$C8_STUB" "$CODEX_CATALOG" "$CODEX_STUB_VERSION" fail
+c8_full="$(codex_run "$C8_HOME" "$C8_LOG" "$CODEX_EMPTY_APPS" --global --type style --target codex,claude --clear-backups 2>&1)"
+c8_full_plain="$(printf '%s\n' "$c8_full" | codex_plain)"
+printf '%s\n' "$c8_full_plain" | grep -q 'debug models failed' ||
+  fail "a full run with a failing catalog must report the skip"
+assert_file "${C8_HOME}/.claude/output-styles/natural-language.md"
+[[ ! -e "$C8_DEST" ]] || fail "a full run with a failing catalog must write no generated file"
+
+C9_HOME="${CODEX_SCRATCH}/c9-home"
+C9_LOG="${CODEX_SCRATCH}/c9.log"
+seed_codex_home "$C9_HOME" "gpt-test"
+C9_DEST="${C9_HOME}/.codex/instructions/natural-language.md"
+C9_OTHER_CATALOG="${CODEX_SCRATCH}/c9-other-catalog.json"
+jq -n --arg slug other '{models:[{slug:$slug,base_instructions:"x"}]}' > "$C9_OTHER_CATALOG"
+C9_OTHER_STUB="${CODEX_SCRATCH}/c9-other-bin/codex"
+make_codex_stub "$C9_OTHER_STUB" "$C9_OTHER_CATALOG" "$CODEX_STUB_VERSION"
+# shellcheck disable=SC2034
+c9_out="$(
+  (
+    set -- --uninstall
+    DEPLOYMENT_SH_SKIP_MAIN=1
+    HOME="$C9_HOME"
+    unset CODEX_HOME
+    export HOME
+    # shellcheck source=/dev/null
+    source "$CODEX_DEPLOY"
+    CODEX_BIN="$C9_OTHER_STUB"
+    CODEX_SYSTEM_BUNDLE_ROOT="$CODEX_EMPTY_APPS"
+    DEPLOYED_ARTIFACTS_LOG="$C9_LOG"
+    DRY_RUN=false
+    generate_codex_style_file "$REPO_ROOT/styles/natural-language.md" "$C9_DEST" "codex" "style"
+  ) 2>&1
+)"
+c9_plain="$(printf '%s\n' "$c9_out" | codex_plain)"
+printf '%s\n' "$c9_plain" | grep -q "model 'gpt-test' has no base_instructions" ||
+  fail "a catalog that omits the configured model must name the cause"
+[[ ! -e "$C9_DEST" ]] || fail "a catalog that omits the model must write no generated file"
+assert_absent "${C9_HOME}/.codex/config.toml" 'model_instructions_file' \
+  "a catalog that omits the model must write no configuration key"
+
+# --- personality = "none" produces the same file as an absent setting ---
+C10A_HOME="${CODEX_SCRATCH}/c10a-home"
+C10B_HOME="${CODEX_SCRATCH}/c10b-home"
+C10A_LOG="${CODEX_SCRATCH}/c10a.log"
+C10B_LOG="${CODEX_SCRATCH}/c10b.log"
+seed_codex_home "$C10A_HOME" "gpt-test"
+seed_codex_home "$C10B_HOME" "gpt-test" 'personality = "none"'
+C10A_STUB="${C10A_HOME}/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"
+C10B_STUB="${C10B_HOME}/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"
+make_codex_stub "$C10A_STUB" "$CODEX_CATALOG" "$CODEX_STUB_VERSION"
+make_codex_stub "$C10B_STUB" "$CODEX_CATALOG" "$CODEX_STUB_VERSION"
+codex_run "$C10A_HOME" "$C10A_LOG" "$CODEX_EMPTY_APPS" --global --type style --target codex --clear-backups >/dev/null
+codex_run "$C10B_HOME" "$C10B_LOG" "$CODEX_EMPTY_APPS" --global --type style --target codex --clear-backups >/dev/null
+cmp -s "${C10A_HOME}/.codex/instructions/natural-language.md" \
+  "${C10B_HOME}/.codex/instructions/natural-language.md" ||
+  fail "personality = none must produce the same generated file as an absent setting"
+assert_present "${C10B_HOME}/.codex/instructions/natural-language.md" \
+  'Write like one person explaining something to another' \
+  "personality = none must still carry the style Personality prose"
+
+# --- CODEX_HOME relocates every Codex artefact ---
+C11_HOME="${CODEX_SCRATCH}/c11-home"
+C11_CODEX_HOME="${CODEX_SCRATCH}/c11-codex-home"
+C11_LOG="${CODEX_SCRATCH}/c11.log"
+mkdir -p "$C11_HOME/.ai_asset_deploy" "$C11_CODEX_HOME"
+printf 'model = "gpt-test"\n' > "$C11_CODEX_HOME/config.toml"
+cp "$CONF_TEMPLATE" "$C11_HOME/.ai_asset_deploy/config"
+printf '\n#codex\nstyle:natural-language\n' >> "$C11_HOME/.ai_asset_deploy/config"
+C11_STUB="${C11_HOME}/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"
+make_codex_stub "$C11_STUB" "$CODEX_CATALOG" "$CODEX_STUB_VERSION"
+codex_run_home "$C11_HOME" "$C11_LOG" "$CODEX_EMPTY_APPS" "$C11_CODEX_HOME" --global --type style --target codex --clear-backups >/dev/null
+assert_file "${C11_CODEX_HOME}/instructions/natural-language.md"
+assert_present "${C11_CODEX_HOME}/config.toml" 'model_instructions_file' \
+  "CODEX_HOME deploy must merge the key into that tree's config"
+[[ ! -e "${C11_HOME}/.codex" ]] ||
+  fail "CODEX_HOME deploy must leave ~/.codex untouched"
+codex_run_home "$C11_HOME" "$C11_LOG" "$CODEX_EMPTY_APPS" "$C11_CODEX_HOME" --uninstall --global --type style --target codex >/dev/null
+[[ ! -e "${C11_CODEX_HOME}/instructions/natural-language.md" ]] ||
+  fail "CODEX_HOME uninstall must remove the generated file"
+assert_absent "${C11_CODEX_HOME}/config.toml" 'model_instructions_file' \
+  "CODEX_HOME uninstall must remove the configuration key"
+
+# logged_path_scope derives global under both Codex roots and the project for a
+# project tree, whichever CODEX_HOME names.
+# shellcheck disable=SC2034
+(
+  set -- --uninstall
+  DEPLOYMENT_SH_SKIP_MAIN=1
+  HOME="$C11_HOME"
+  export HOME
+  # shellcheck source=/dev/null
+  source "$CODEX_DEPLOY"
+  HOME_DIR="$C11_HOME"
+  CODEX_HOME="$C11_CODEX_HOME"
+  assert_eq "$(logged_path_scope "${C11_HOME}/.codex/instructions/x.md" codex)" "global" \
+    "a ~/.codex path must derive global"
+  assert_eq "$(logged_path_scope "${C11_CODEX_HOME}/instructions/x.md" codex)" "global" \
+    "a CODEX_HOME path must derive global"
+  project_dir="${CODEX_SCRATCH}/c11-project"
+  assert_eq "$(logged_path_scope "${project_dir}/.codex/instructions/x.md" codex)" "$project_dir" \
+    "a project .codex path must derive the project"
+  assert_eq "$(logged_path_scope "${project_dir}/.agents/skills/x/SKILL.md" codex)" "$project_dir" \
+    "a project .agents/skills path must derive the project"
+)
+
+# --- A second, non-active style file is skipped ---
+C12_REPO="${CODEX_SCRATCH}/c12-repo"
+mkdir -p "$C12_REPO/deployment" "$C12_REPO/plugins"
+cp "$REPO_ROOT/deployment/deployment.sh" "$C12_REPO/deployment/deployment.sh"
+cp "$REPO_ROOT/deployment/ai_asset_deploy.conf.template" "$C12_REPO/deployment/ai_asset_deploy.conf.template"
+cp -R "$REPO_ROOT/styles" "$C12_REPO/styles"
+cp "$C12_REPO/styles/natural-language.md" "$C12_REPO/styles/other-style.md"
+C12_HOME="${CODEX_SCRATCH}/c12-home"
+C12_LOG="${CODEX_SCRATCH}/c12.log"
+seed_codex_home "$C12_HOME" "gpt-test"
+C12_STUB="${C12_HOME}/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"
+make_codex_stub "$C12_STUB" "$CODEX_CATALOG" "$CODEX_STUB_VERSION"
+c12_out="$(HOME="$C12_HOME" CODEX_HOME="" CODEX_SYSTEM_BUNDLE_ROOT="$CODEX_EMPTY_APPS" \
+  DEPLOYED_ARTIFACTS_LOG="$C12_LOG" "$DEPLOY_BASH" "$C12_REPO/deployment/deployment.sh" \
+  --global --type style --target codex --clear-backups 2>&1)"
+c12_plain="$(printf '%s\n' "$c12_out" | codex_plain)"
+assert_eq "$(printf '%s\n' "$c12_plain" | grep -c 'generated' || true)" "1" \
+  "two style files must produce exactly one generated file"
+assert_eq "$(printf '%s\n' "$c12_plain" | grep -c 'merged' || true)" "1" \
+  "two style files must produce exactly one configuration merge"
+printf '%s\n' "$c12_plain" | grep -q "active style for codex is 'natural-language'" ||
+  fail "the non-active style file must draw a skip message"
+[[ ! -e "${C12_HOME}/.codex/instructions/other-style.md" ]] ||
+  fail "the non-active style file must write no generated file"
+assert_eq "$(grep -cF "${C12_HOME}/.codex/instructions/natural-language.md"$'\t' "$C12_LOG" || true)" "1" \
+  "two style files must log exactly one generated file"
+
+# --- Project scope is rejected for the Codex style ---
+C13_HOME="${CODEX_SCRATCH}/c13-home"
+C13_PROJECT="${CODEX_SCRATCH}/c13-project"
+C13_LOG="${CODEX_SCRATCH}/c13.log"
+seed_codex_home "$C13_HOME" "gpt-test"
+mkdir -p "$C13_PROJECT"
+c13_out="$(codex_run "$C13_HOME" "$C13_LOG" "$CODEX_EMPTY_APPS" --project-dir "$C13_PROJECT" --type style --target codex 2>&1)"
+c13_plain="$(printf '%s\n' "$c13_out" | codex_plain)"
+printf '%s\n' "$c13_plain" | grep -q 'rejected for project scope' ||
+  fail "project-scope Codex style deployment must be rejected with a message"
+[[ ! -e "${C13_PROJECT}/.codex/instructions/natural-language.md" ]] ||
+  fail "project-scope Codex style deployment must write no generated file"
+[[ ! -e "${C13_PROJECT}/.codex/config.toml" ]] ||
+  fail "project-scope Codex style deployment must write no configuration key"
+
 printf 'Style deployment regression passed\n'

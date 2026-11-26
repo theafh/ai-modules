@@ -19,7 +19,9 @@ set -euo pipefail
 #   #tool                     Section heading
 #   disallow:path             Relative path to exclude for that tool
 #   replace:path VAR=value    Replace $VAR$ in matching deployed copies
-#   style:<name>              Active output-style name for that tool (read by the Claude arm only)
+#   style:<name>              Active output-style name for that tool (read by the Claude and Codex
+#                             arms: Claude merges settings outputStyle, Codex derives the
+#                             instructions file and sets model_instructions_file)
 #
 # Features:
 #   --global         Deploy into global config dirs (explicit mode)
@@ -299,7 +301,9 @@ if [[ -n "$PROJECT_DIR" ]]; then
 else
   CLAUDE_DIR="${HOME_DIR}/.claude"
   CURSOR_DIR="${HOME_DIR}/.cursor"
-  CODEX_DIR="${HOME_DIR}/.codex"
+  # CODEX_HOME relocates the whole Codex configuration tree, so every artefact
+  # this run deploys to Codex lands there and the default stays ~/.codex.
+  CODEX_DIR="${CODEX_HOME:-${HOME_DIR}/.codex}"
   CODEX_SKILLS_DIR=""
   VSCODE_COPILOT_DIR="${HOME_DIR}/.copilot"
   OPENCODE_DIR="${HOME_DIR}/.config/opencode"
@@ -313,6 +317,13 @@ else
     VSCODE_PROMPTS_DIR="${HOME_DIR}/.config/Code/User/prompts"
   fi
 fi
+
+# Codex ships inside the ChatGPT application bundle rather than on PATH. The
+# home-directory bundle is probed ahead of the system one so a scratch HOME
+# stays isolated from a machine-wide install, and CODEX_SYSTEM_BUNDLE_ROOT lets
+# a staged test or a non-standard install point the system probe elsewhere.
+CODEX_BUNDLE_BIN_REL="Contents/Resources/codex-cli/bin/codex"
+CODEX_SYSTEM_BUNDLE_ROOT="${CODEX_SYSTEM_BUNDLE_ROOT:-/Applications}"
 
 # Dormant managed-global-rules feature, parked to keep its exact strings and
 # intent on record: these five inputs once fed a routine that wrote a
@@ -433,6 +444,12 @@ path_exists() {
   if [[ "$path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_.]*)\]$ ]]; then
     local json_file="${BASH_REMATCH[1]}"
     local json_key="${BASH_REMATCH[2]}"
+    # A .toml destination reads through the TOML parser: a JSON probe would
+    # report every TOML key absent and skip its uninstall.
+    if [[ "$json_file" == *.toml ]]; then
+      [[ "$(toml_get_key "$json_file" "$json_key" 2>/dev/null)" != "@absent" ]]
+      return $?
+    fi
     [[ -f "$json_file" ]] && jq -e --arg k "$json_key" 'has($k)' "$json_file" &>/dev/null
     return $?
   fi
@@ -2751,6 +2768,590 @@ generate_vscode_style_rule() {
 }
 
 # ---------------------------------------------------------------------------
+# TOML-aware edit of one top-level key.
+#
+# Codex's user configuration is TOML, so the JSON merge helpers cannot carry
+# model_instructions_file: a JSON round-trip would drop every comment and
+# reorder the file. Python 3's tomllib reads the document and validates every
+# edit, and a line-level write replaces or inserts the one assignment so every
+# other key, table, and comment stays in place. A document that does not parse,
+# or an edit that would not parse, is rejected without writing.
+#
+# Modes: get prints the key as compact JSON or @absent; set writes a string
+# value from a JSON-encoded argument; strip removes the key.
+# ---------------------------------------------------------------------------
+toml_python_available() {
+  command -v python3 >/dev/null 2>&1 || return 1
+  python3 -c 'import tomllib' >/dev/null 2>&1
+}
+
+toml_edit_python() {
+  python3 - "$@" <<'PY'
+import json, os, re, sys, tempfile
+try:
+    import tomllib
+except ImportError:
+    sys.exit(2)
+
+mode = sys.argv[1]
+path = sys.argv[2]
+key = sys.argv[3]
+value_json = sys.argv[4] if len(sys.argv) > 4 else None
+
+def read_text():
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            return handle.read()
+    except FileNotFoundError:
+        return ""
+
+def parse(text):
+    return tomllib.loads(text) if text.strip() else {}
+
+text = read_text()
+try:
+    data = parse(text)
+except Exception as error:
+    print(f"{path} is not valid TOML: {error}", file=sys.stderr)
+    sys.exit(4)
+
+if mode == "get":
+    if key in data:
+        print(json.dumps(data[key]))
+    else:
+        print("@absent")
+    sys.exit(0)
+
+if mode not in ("set", "strip"):
+    sys.exit(6)
+
+lines = text.splitlines(keepends=True)
+table_start = None
+for index, line in enumerate(lines):
+    if re.match(r"^\s*\[", line):
+        table_start = index
+        break
+limit = table_start if table_start is not None else len(lines)
+key_re = re.compile(r"^\s*" + re.escape(key) + r"\s*=")
+found = None
+for index in range(limit):
+    if key_re.match(lines[index]):
+        found = index
+        break
+
+if mode == "strip":
+    if found is None:
+        sys.exit(0)
+    del lines[found]
+else:
+    value = json.loads(value_json)
+    if not isinstance(value, str):
+        print("only a string value is supported", file=sys.stderr)
+        sys.exit(5)
+    assignment = f"{key} = {json.dumps(value)}\n"
+    if found is not None:
+        lines[found] = assignment
+    else:
+        insert_at = table_start if table_start is not None else len(lines)
+        block = [assignment]
+        if insert_at == 0 or lines[insert_at - 1].strip() != "":
+            block.append("\n")
+        lines[insert_at:insert_at] = block
+
+result = "".join(lines)
+try:
+    updated = parse(result)
+except Exception as error:
+    print(f"edited {path} would not parse as TOML: {error}", file=sys.stderr)
+    sys.exit(5)
+if mode == "set" and updated.get(key) != value:
+    print(f"edited {path} did not set {key}", file=sys.stderr)
+    sys.exit(5)
+if mode == "strip" and key in updated:
+    print(f"edited {path} still carries {key}", file=sys.stderr)
+    sys.exit(5)
+
+directory = os.path.dirname(os.path.abspath(path))
+os.makedirs(directory, exist_ok=True)
+handle = tempfile.NamedTemporaryFile(
+    "w", encoding="utf-8", dir=directory, prefix=".toml-", delete=False
+)
+try:
+    handle.write(result)
+    handle.close()
+    os.replace(handle.name, path)
+except Exception:
+    try:
+        os.unlink(handle.name)
+    except OSError:
+        pass
+    raise
+sys.exit(0)
+PY
+}
+
+toml_get_key() {
+  toml_edit_python get "$1" "$2"
+}
+
+toml_set_key() {
+  toml_edit_python set "$1" "$2" "$3"
+}
+
+toml_strip_key() {
+  toml_edit_python strip "$1" "$2"
+}
+
+restore_toml_key() {
+  local target="$1"
+  local key="$2"
+  local prior_value="$3"
+
+  if [[ "$prior_value" == "@absent" ]]; then
+    toml_strip_key "$target" "$key"
+    return $?
+  fi
+
+  toml_set_key "$target" "$key" "$prior_value"
+}
+
+# Merge a top-level TOML string key into a Codex configuration file.
+# The prior value, or @absent, is recorded on the first write and reused on a
+# later deploy, so uninstall restores what the user had before this deploy.
+merge_toml_key() {
+  local source="$1"
+  local target="$2"
+  local key="$3"
+  local value="$4"
+  local target_id="$5"
+  local artifact_type="$6"
+  local log_path="${target}[${key}]"
+
+  if $DRY_RUN; then
+    SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
+    info "would-merge" "${target} <- ${key} = \"${value}\""
+    return 0
+  fi
+
+  if ! toml_python_available; then
+    warn "skip" "Python 3 with tomllib is unavailable; ${key} not merged into ${target}"
+    return 0
+  fi
+
+  local prior_value=""
+  if prior_value="$(lookup_logged_prior "$log_path")"; then
+    :
+  else
+    if ! prior_value="$(toml_get_key "$target" "$key" 2>/dev/null)"; then
+      err "failed" "cannot read ${key} from ${target}; no key written"
+      return 0
+    fi
+  fi
+
+  local value_json
+  value_json="$(jq -cn --arg v "$value" '$v')"
+  if ! toml_set_key "$target" "$key" "$value_json"; then
+    err "failed" "${key} not merged into ${target}; the file was left unchanged"
+    return 0
+  fi
+
+  ok "merged" "${target} <- ${key}"
+  SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
+  append_deployed_artifact_log "$log_path" "$target_id" "$artifact_type" "$source" "$prior_value"
+}
+
+# ---------------------------------------------------------------------------
+# Codex style target.
+#
+# Codex carries one whole-prompt instructions slot, so the style has to displace
+# the built-in personality and formatting guidance rather than append to it. The
+# deploy re-derives the configured model's base instructions from the installed
+# binary on every run, substitutes the style-owned headings in place, removes
+# the two headings whose guidance the style reverses, and points
+# model_instructions_file at the result.
+# ---------------------------------------------------------------------------
+find_codex_binary() {
+  local candidate
+
+  if [[ -n "${CODEX_BIN:-}" && -x "${CODEX_BIN}" ]]; then
+    printf '%s' "${CODEX_BIN}"
+    return 0
+  fi
+
+  for candidate in \
+    "${HOME_DIR}/Applications/ChatGPT.app/${CODEX_BUNDLE_BIN_REL}" \
+    "${CODEX_SYSTEM_BUNDLE_ROOT}/ChatGPT.app/${CODEX_BUNDLE_BIN_REL}"; do
+    if [[ -x "$candidate" ]]; then
+      printf '%s' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+# Read the top-level model key from a Codex config.toml. A key inside a table is
+# not the user's selected model, so the scan stops at the first table header.
+codex_configured_model() {
+  local config_file="$1"
+  local model=""
+
+  [[ -f "$config_file" ]] || return 1
+
+  model="$(awk '
+    /^[[:space:]]*\[/ { exit }
+    /^[[:space:]]*model[[:space:]]*=/ {
+      value = $0
+      sub(/^[^=]*=[[:space:]]*/, "", value)
+      if (value ~ /^"/) {
+        sub(/^"/, "", value)
+        sub(/".*$/, "", value)
+      } else if (value ~ /^\047/) {
+        sub(/^\047/, "", value)
+        sub(/\047.*$/, "", value)
+      } else {
+        sub(/[[:space:]]*#.*$/, "", value)
+        sub(/[[:space:]]*$/, "", value)
+      }
+      print value
+      exit
+    }
+  ' "$config_file")"
+
+  [[ -n "$model" ]] || return 1
+  printf '%s' "$model"
+}
+
+generate_codex_style_file() {
+  local source="$1"
+  local dest="$2"
+  local target_id="$3"
+  local artifact_type="$4"
+
+  if [[ ! -f "$source" ]]; then
+    err "missing" "source not found: $source"
+    return 0
+  fi
+
+  local style_name
+  style_name="$(basename "$source")"
+  style_name="${style_name%.md}"
+
+  local codex_bin=""
+  if ! codex_bin="$(find_codex_binary)"; then
+    warn "skip" "[$style_name] no Codex binary found (CODEX_BIN, \$HOME/Applications/ChatGPT.app, ${CODEX_SYSTEM_BUNDLE_ROOT}/ChatGPT.app); Codex style skipped"
+    return 0
+  fi
+
+  local config_file="${CODEX_DIR}/config.toml"
+  local model=""
+  if ! model="$(codex_configured_model "$config_file")"; then
+    warn "skip" "[$style_name] no model key in ${config_file}; Codex style skipped"
+    return 0
+  fi
+
+  local version=""
+  if ! version="$("$codex_bin" --version 2>/dev/null)"; then
+    warn "skip" "[$style_name] ${codex_bin} --version failed; Codex style skipped"
+    return 0
+  fi
+  version="${version%"${version##*[![:space:]]}"}"
+
+  local catalog=""
+  if ! catalog="$("$codex_bin" debug models 2>/dev/null)"; then
+    warn "skip" "[$style_name] ${codex_bin} debug models failed; Codex style skipped"
+    return 0
+  fi
+
+  local derived=""
+  derived="$(printf '%s' "$catalog" | jq -r --arg m "$model" '[.models[]? | select(.slug == $m) | .base_instructions // empty] | .[0] // empty' 2>/dev/null)" || derived=""
+  if [[ -z "$derived" ]]; then
+    warn "skip" "[$style_name] model '${model}' has no base_instructions in the ${version} catalog; Codex style skipped"
+    return 0
+  fi
+
+  if ! toml_python_available; then
+    warn "skip" "[$style_name] Python 3 with tomllib is unavailable; Codex style skipped"
+    return 0
+  fi
+
+  if $DRY_RUN; then
+    SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
+    info "would-gen" "$dest (codex instructions file)"
+    merge_toml_key "$DEPLOYMENT_CONF" "$config_file" "model_instructions_file" "$dest" "$target_id" "$artifact_type"
+    return 0
+  fi
+
+  local derived_file generated
+  derived_file="$(mktemp)"
+  if ! printf '%s\n' "$derived" > "$derived_file"; then
+    rm -f "$derived_file"
+    err "failed" "[$style_name] could not stage the derived Codex instructions"
+    return 0
+  fi
+
+  if ! generated="$(
+    perl - "$source" "$derived_file" "$model" "$version" "$style_name" <<'PERL'
+use strict;
+use warnings;
+
+my ($style_file, $derived_file, $model, $version, $style_name) = @ARGV;
+
+sub slurp {
+  my $path = shift;
+  open my $handle, '<', $path or die "cannot read $path: $!\n";
+  local $/;
+  my $text = <$handle>;
+  close $handle;
+  return defined $text ? $text : '';
+}
+
+my $style = slurp($style_file);
+$style =~ s/\A---\r?\n.*?\r?\n---\r?\n//s;
+
+my $root = { tag => 'root', children => [] };
+my @stack = ($root);
+while ($style =~ /\G(?:<([A-Za-z_][A-Za-z0-9_-]*)>|<\/([A-Za-z_][A-Za-z0-9_-]*)>|([^<]+))/gc) {
+  my ($open, $close, $text) = ($1, $2, $3);
+  if (defined $open) {
+    my $node = { tag => $open, children => [] };
+    push @{ $stack[-1]{children} }, $node;
+    push @stack, $node;
+  } elsif (defined $close) {
+    pop @stack if @stack > 1;
+  } else {
+    push @{ $stack[-1]{children} }, { text => $text };
+  }
+}
+
+sub child {
+  my ($node, $tag) = @_;
+  return undef unless $node;
+  for my $candidate (@{ $node->{children} }) {
+    return $candidate if defined $candidate->{tag} && $candidate->{tag} eq $tag;
+  }
+  return undef;
+}
+
+sub element_children {
+  my $node = shift;
+  return () unless $node;
+  return grep { defined $_->{tag} } @{ $node->{children} };
+}
+
+sub node_text {
+  my $node = shift;
+  return '' unless $node;
+  my $text = '';
+  for my $candidate (@{ $node->{children} }) {
+    $text .= defined $candidate->{text} ? $candidate->{text} : node_text($candidate);
+  }
+  $text =~ s/\A\s+//;
+  $text =~ s/\s+\z//;
+  return $text;
+}
+
+sub lead_in {
+  my $node = shift;
+  return '' unless $node;
+  my $text = '';
+  for my $candidate (@{ $node->{children} }) {
+    last if defined $candidate->{tag};
+    $text .= $candidate->{text} if defined $candidate->{text};
+  }
+  $text =~ s/\A\s+//;
+  $text =~ s/\s+\z//;
+  return $text;
+}
+
+my $natural = child($root, 'natural_language');
+die "style body has no <natural_language> element\n" unless $natural;
+
+my @personality;
+push @personality, node_text(child($natural, 'objective'));
+my $scope = child($natural, 'scope');
+push @personality, node_text(child($scope, 'prose'));
+push @personality, node_text(child($scope, 'verbatim_content'));
+push @personality, '<engineering_behavior>The wording rules govern prose. Coding, tool-use, and verification behaviour come from the Codex operating sections kept from the derived text.</engineering_behavior>';
+for my $candidate (element_children(child($natural, 'focus'))) {
+  push @personality, node_text($candidate);
+}
+for my $candidate (element_children(child($natural, 'keep_the_meaning'))) {
+  push @personality, node_text($candidate);
+}
+push @personality, node_text(child($natural, 'goal_statements'));
+for my $candidate (element_children(child($natural, 'policy'))) {
+  push @personality, node_text($candidate);
+}
+@personality = grep { length } @personality;
+
+my @writing;
+for my $group (qw(sentence_style paragraphs technical_vocabulary worn_phrasing)) {
+  my $node = child($natural, $group);
+  my $lead = lead_in($node);
+  push @writing, $lead if length $lead;
+  for my $candidate (element_children($node)) {
+    push @writing, node_text($candidate);
+  }
+}
+@writing = grep { length } @writing;
+
+my @final;
+my $contract = child($natural, 'output_contract');
+push @final, node_text(child($contract, 'format'));
+for my $candidate (element_children(child($contract, 'validations'))) {
+  push @final, node_text($candidate);
+}
+@final = grep { length } @final;
+
+my $derived = slurp($derived_file);
+$derived =~ s/\r\n/\n/g;
+my @lines = split /\n/, $derived, -1;
+pop @lines while @lines && $lines[-1] eq '';
+
+sub heading_level {
+  my $line = shift;
+  return 0 unless $line =~ /\A(#{1,6})[ \t]+\S/;
+  return length $1;
+}
+
+sub heading_text {
+  my $line = shift;
+  return '' unless $line =~ /\A#{1,6}[ \t]+(.*?)[ \t]*\z/;
+  return $1;
+}
+
+my @heads;
+for my $index (0 .. $#lines) {
+  my $level = heading_level($lines[$index]);
+  push @heads, { index => $index, level => $level, text => heading_text($lines[$index]) } if $level;
+}
+
+sub find_head {
+  my ($level, $text) = @_;
+  for my $head (@heads) {
+    return $head if $head->{level} == $level && $head->{text} eq $text;
+  }
+  return undef;
+}
+
+sub next_head_after {
+  my ($index, $max_level) = @_;
+  for my $head (@heads) {
+    next if $head->{index} <= $index;
+    return $head->{index} if !defined $max_level || $head->{level} <= $max_level;
+  }
+  return scalar @lines;
+}
+
+my %action;
+my @replaced;
+my @substitutions = (
+  [1, 'Personality', \@personality],
+  [2, 'Writing style', \@writing],
+  [2, 'Final answer', \@final],
+);
+my @missing;
+for my $spec (@substitutions) {
+  my ($level, $text, $body) = @$spec;
+  my $head = find_head($level, $text);
+  if (!$head) {
+    push @missing, ('#' x $level) . ' ' . $text;
+    next;
+  }
+  $action{ $head->{index} } = {
+    kind => 'replace',
+    end => next_head_after($head->{index}, undef),
+    body => $body,
+  };
+  push @replaced, ('#' x $level) . ' ' . $text;
+}
+if (@missing) {
+  print STDERR "missing style-owned heading(s) " . join(', ', map { "'$_'" } @missing)
+    . " in the Codex $version catalog; wrote nothing\n";
+  exit 3;
+}
+
+my @removals = (
+  [2, 'Technical communication'],
+  [3, 'Writing PR descriptions'],
+);
+for my $spec (@removals) {
+  my ($level, $text) = @$spec;
+  my $head = find_head($level, $text);
+  next unless $head;
+  $action{ $head->{index} } = {
+    kind => 'remove',
+    end => next_head_after($head->{index}, $level),
+  };
+  push @replaced, ('#' x $level) . ' ' . $text;
+}
+
+my @untouched;
+for my $head (@heads) {
+  my $consumed = 0;
+  for my $start (keys %action) {
+    my $entry = $action{$start};
+    if ($head->{index} >= $start && $head->{index} < $entry->{end}) {
+      $consumed = 1;
+      last;
+    }
+  }
+  next if $consumed;
+  push @untouched, ('#' x $head->{level}) . ' ' . $head->{text};
+}
+
+my @out;
+my $index = 0;
+while ($index <= $#lines) {
+  if (my $entry = $action{$index}) {
+    if ($entry->{kind} eq 'replace') {
+      push @out, $lines[$index];
+      push @out, '';
+      my $first = 1;
+      for my $paragraph (@{ $entry->{body} }) {
+        push @out, '' unless $first;
+        push @out, $paragraph;
+        $first = 0;
+      }
+      push @out, '';
+    }
+    $index = $entry->{end};
+    next;
+  }
+  push @out, $lines[$index];
+  $index++;
+}
+pop @out while @out && $out[-1] eq '';
+
+print "<!--\n";
+print "Generated by ai-modules deployment.sh from the $style_name output style.\n";
+print "Model: $model\n";
+print "Codex version: $version\n";
+print "Replaced headings: " . join(', ', @replaced) . "\n";
+print "Untouched headings: " . join(', ', @untouched) . "\n";
+print "-->\n\n";
+print join("\n", @out), "\n";
+PERL
+  )"; then
+    rm -f "$derived_file"
+    err "failed" "[$style_name] Codex style generation failed; no file or key written"
+    return 0
+  fi
+  rm -f "$derived_file"
+
+  ensure_dir "$(dirname "$dest")"
+  if [[ -L "$dest" || -f "$dest" ]]; then rm -f "$dest"; fi
+  printf '%s\n' "$generated" > "$dest"
+
+  ok "generated" "$dest (codex instructions file)"
+  SUMMARY_DEPLOY_ACTIONS=$((SUMMARY_DEPLOY_ACTIONS + 1))
+  append_deployed_artifact_log "$dest" "$target_id" "$artifact_type" "$source"
+
+  merge_toml_key "$DEPLOYMENT_CONF" "$config_file" "model_instructions_file" "$dest" "$target_id" "$artifact_type"
+}
+
+# ---------------------------------------------------------------------------
 # Report a settings file that shadows the outputStyle a run just merged.
 #
 # Claude resolves outputStyle from three settings files, where local project
@@ -3130,6 +3731,30 @@ install_for_app() {
             fi
           fi
           ;;
+        codex)
+          # Codex has one whole-prompt instructions slot, so this arm runs at
+          # global scope only: a project-scoped file would change every
+          # contributor's operating instructions and stay inert until the
+          # project is trusted.
+          if [[ -n "$PROJECT_DIR" ]]; then
+            warn "skip" "[$name] Codex style deployment is rejected for project scope; run --global instead"
+            return 0
+          fi
+          local active_style=""
+          if [[ ${#STYLE_MAP[@]} -gt 0 ]]; then
+            active_style="$(table_get "$app_id" "${STYLE_MAP[@]}" || true)"
+          fi
+          if [[ -z "$active_style" ]]; then
+            warn "skip" "[$name] no style:<name> under #codex in the deploy config; Codex style skipped"
+            return 0
+          elif [[ "$active_style" != "$name" ]]; then
+            info "skip" "[$name] active style for codex is '${active_style}'; skipped"
+            return 0
+          fi
+          local dest_dir="${CODEX_DIR}/instructions"
+          local dest_path="${dest_dir}/${name}.md"
+          generate_codex_style_file "$source_abs" "$dest_path" "$app_id" "$type"
+          ;;
         vscode)
           # VSCODE_COPILOT_DIR is ~/.copilot under --global and <project>/.github
           # under --project-dir, so one destination expression serves both
@@ -3392,7 +4017,10 @@ logged_type_matches_filter() {
 #
 # The global-form roots are recomputed from HOME_DIR and the OS branch rather
 # than read from the scope-dependent *_DIR variables the project branch
-# reassigns, so the helper reads any logged line whichever scope wrote it.
+# reassigns, so the helper reads any logged line whichever scope wrote it. A
+# non-empty CODEX_HOME adds a second codex root beside the HOME_DIR-derived one,
+# because a deploy under CODEX_HOME logs paths there and an uninstall or update
+# that reads them exports the same CODEX_HOME.
 logged_path_scope() {
   local raw_path="${1:-}"
   local target_id="${2:-}"
@@ -3432,6 +4060,11 @@ logged_path_scope() {
     "vscode|${vscode_prompts_root}"
     "vscode|${vscode_prompts_root%/*}"
   )
+  # CODEX_HOME relocates the Codex tree, so a path under it derives global
+  # beside the literal ~/.codex root the array already carries.
+  if [[ -n "${CODEX_HOME:-}" ]]; then
+    global_roots+=("codex|${CODEX_HOME}")
+  fi
   local project_suffixes=(
     "claude|.claude"
     "cursor|.cursor"
@@ -3492,6 +4125,17 @@ remove_logged_path() {
   if [[ "$path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_.]*)\]$ ]]; then
     local json_file="${BASH_REMATCH[1]}"
     local json_key="${BASH_REMATCH[2]}"
+    # A .toml destination takes the TOML-aware branch: the prior is a JSON
+    # encoding of the value this deploy replaced, and restoring it must edit
+    # TOML rather than JSON.
+    if [[ "$json_file" == *.toml ]]; then
+      if [[ -n "$prior_value" ]]; then
+        restore_toml_key "$json_file" "$json_key" "$prior_value"
+        return $?
+      fi
+      strip_toml_key "$json_file" "$json_key"
+      return $?
+    fi
     if [[ -n "$prior_value" ]]; then
       restore_json_key "$json_file" "$json_key" "$prior_value"
       return $?
@@ -3527,6 +4171,22 @@ json_key_uninstall_succeeded() {
   if [[ "$path" =~ ^(.+)\[([a-zA-Z_][a-zA-Z0-9_.]*)\]$ ]]; then
     local json_file="${BASH_REMATCH[1]}"
     local json_key="${BASH_REMATCH[2]}"
+
+    # A .toml destination verifies through the TOML branch: a recorded prior is
+    # a JSON encoding compared against the parsed value, and @absent means the
+    # key must be gone.
+    if [[ "$json_file" == *.toml ]]; then
+      local toml_current=""
+      if ! toml_current="$(toml_get_key "$json_file" "$json_key" 2>/dev/null)"; then
+        return 1
+      fi
+      if [[ -n "$prior_value" && "$prior_value" != "@absent" ]]; then
+        [[ "$toml_current" == "$prior_value" ]]
+        return $?
+      fi
+      [[ "$toml_current" == "@absent" ]]
+      return $?
+    fi
 
     if [[ -n "$prior_value" && "$prior_value" != "@absent" ]]; then
       [[ -f "$json_file" ]] || return 1

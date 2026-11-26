@@ -2,9 +2,11 @@
 description: Deploy the output style to Codex by re-deriving per-model base instructions at deploy time, swapping the style-owned sections for the style prose, and pointing the instructions-file key at the result.
 scope: deployment
 created: 2026-08-07T21:39:03Z
-updated: 2026-11-25T14:48:24Z
-status: ready
+updated: 2026-11-26T05:09:36Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Deploy the output style to Codex
