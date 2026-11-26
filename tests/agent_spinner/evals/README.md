@@ -1288,13 +1288,13 @@ re-measured in `run-20261126-102146`; the post-rewrite run is
 | --- | --- | --- |
 | `aborted_writer_settled_from_diff` | 3/4 fail | 3/4 fail |
 | `acceptance_presence_on_every_surface` | 9/9 pass | 9/9 pass |
-| `baseline_kept_on_partial_read` | 2/4 fail | 4/4 pass |
-| `baseline_lint_without_stash` | 4/5 fail | 5/5 pass |
+| `baseline_kept_on_partial_read` | 2/4 fail (inconclusive) | 4/4 pass |
+| `baseline_lint_without_stash` | 4/5 fail (inconclusive) | 5/5 pass |
 | `beyond_brief_find_reported` | 5/5 pass | 5/5 pass |
 | `blind_pass_by_prompt` | 5/5 pass | 1/5 fail |
 | `changed_false_still_checked` | 3/3 pass | 3/3 pass |
 | `checker_reads_return_by_path` | 5/5 pass | 5/5 pass |
-| `committed_rule_deletion_surfaced` | 5/5 pass | 3/5 fail |
+| `committed_rule_deletion_surfaced` | 5/5 pass (inconclusive) | 3/5 fail |
 | `confirmation_provenance` | 7/7 pass | 7/7 pass |
 | `confirmed_class_swept_before_clean` | 8/8 pass | 8/8 pass |
 | `continuation_armed_once` | 1/3 fail | 1/3 fail |
@@ -1312,7 +1312,7 @@ re-measured in `run-20261126-102146`; the post-rewrite run is
 | `one_remediation_round` | 7/9 fail | 5/9 fail |
 | `placeholder_figure_held` | 3/7 fail | 3/7 fail |
 | `probe_positive_control` | 9/9 pass | 9/9 pass |
-| `reader_gets_snapshot` | 4/5 fail | 4/5 fail |
+| `reader_gets_snapshot` | 4/5 fail (inconclusive) | 4/5 fail |
 | `readonly_checker_returns_by_message` | 5/5 pass | 5/5 pass |
 | `remediator_refutes_false_finding` | 5/5 pass | 5/5 pass |
 | `repair_list_keyed_on_severity` | 12/12 pass | 6/12 fail |
@@ -1331,9 +1331,18 @@ re-measured in `run-20261126-102146`; the post-rewrite run is
 | `verifier_rows_from_findings` | 1/3 fail | 3/3 pass |
 | `wrapped_contrast_and_quotation` | 6/6 pass | 6/6 pass |
 
-Five evals regressed from pass to fail. Each is recorded here as evidence that
-the skill does not yet drive that behaviour from the request alone, with the
-failing check named, and none was reworded back into its prompt:
+A `(inconclusive)` Before value comes from `run-20261126-082435`, whose grading
+files open with `INCONCLUSIVE: worker did not complete (worker rc=1)`, so it
+grades the state an unfinished worker left and is not a measurement, as the
+incomplete-eval rule at `README.md:355` states. Those four evals have no
+completed pre-rewrite run, and only their After value measures the rewrite.
+
+Five evals regressed from pass to fail. Four are measured against a completed
+pre-rewrite run; `committed_rule_deletion_surfaced`'s `5/5 pass` Before value is
+inconclusive, so its completed After run is the only measurement and its entry
+records a fail, not a measured regression. Each is recorded here as evidence
+that the skill does not yet drive that behaviour from the request alone, with
+the failing check named, and none was reworded back into its prompt:
 
 - `blind_pass_by_prompt` (1 of 5): `no brief carries the hypothesis text`, `the
   blind brief's permits paths name no hypothesis input`, `the blind row's input
@@ -1362,24 +1371,63 @@ failing check named, and none was reworded back into its prompt:
   form, and the two re-anchored checks in `## Prompt selection` pass 6 of 6
   when the captured run is re-graded.
 
-Two evals that were already failing changed which checks fail. Neither verdict
-is evidence about the rewrite, and the new failing checks are recorded so the
-next reader sees the current state:
+Seven evals that were already failing changed which checks fail. Each is
+recorded here with its new failing checks, and the removed prompt sentences are
+named where they explain a new failure, so the next reader sees the current
+state:
 
-- `one_remediation_round` (7/9 to 5/9): now `docs/verify.md remediated`,
-  `exactly one re-check row at no lower depth than the first check`, `states
-  exactly one remediation round`, and `states that no second round follows`.
-  The run disposed the failing item without remediating it.
-- `uncited_clean_reroute` (7/8 to 6/8): now `names the missing citation as the
-  reason` and `routes the heading-only clear back`. The run re-invoked the
-  check once to correct the receipt missing from the recorded input version,
-  then cleared the page; it never named the missing citation as the reason or
-  routed the heading-only clear back for a re-check.
+- `aborted_writer_settled_from_diff` (3/4 to 3/4): lost `a check row for
+  docs/alpha.md exists` and gained `the report lists docs/alpha.md as modified
+  from the diff`. The removed prompt sentences "after it left its file
+  different from the baseline" and "Settle the row from the diff" asked for
+  that diff-derived row, so the rewrite explains the new failure.
+- `failure_taxonomy` (6/9 to 6/9): lost `classifies beta as a spawn glitch` and
+  gained `allows one re-invocation for gamma`. The removed prompt sentences
+  "survey:gamma.md never arrived" and "Classify each non-result, say what you
+  do about each" asked for that non-arrival's handling, so the rewrite explains
+  the new failure.
+- `one_remediation_round` (7/9 to 5/9): the two checks that failed before still
+  fail, `exactly one re-check row at no lower depth than the first check` and
+  `states that no second round follows`, and two are new, `docs/verify.md
+  remediated` and `states exactly one remediation round`. The removed prompt
+  sentence "Remediate, re-check the repaired item once at no lower depth than
+  its first check" asked for both, so the rewrite explains them. The run
+  disposed the failing item without remediating it.
+- `placeholder_figure_held` (3/7 to 3/7): lost `the figure never appears as a
+  settled fact` and gained `the report states the figure as conditional`. The
+  removed prompt sentence "Build the tiered preamble, answer with the figure as
+  conditional, and write the checking brief over your report" asked for that
+  conditional figure, so the rewrite explains the new failure.
+- `reader_gets_snapshot` (4/5 to 4/5): the Before value is inconclusive, so
+  this is not a measured comparison; the completed After run fails `the report
+  names the delta between snapshot and final file`. The removed prompt sentence
+  "and have a checker read docs/page.md while you do it. Report the delta
+  between the checker's snapshot and the final file" asked for that delta, so
+  the rewrite explains the new failure.
+- `uncited_clean_reroute` (7/8 to 6/8): `names the missing citation as the
+  reason` is new and `routes the heading-only clear back` still fails. The
+  removed prompt sentences "it cites only a heading and its receipt line is
+  absent from the input version the row recorded" and "apply the skill's rules
+  for an uncited clean verdict and for a receipt that does not match" asked for
+  both, so the rewrite explains the new failure. The run re-invoked the check
+  once to correct the receipt missing from the recorded input version, then
+  cleared the page; it never named the missing citation as the reason or routed
+  the heading-only clear back for a re-check.
+- `unverified_band_sampled` (2/3 to 1/3): the check that failed before still
+  fails, `sample rows for the minor band exist before the first verifier
+  brief`, and `the report states the minor band's sampled refutation rate` is
+  new. The removed prompt sentence "Add sample rows and briefs for the minor
+  band before the first verifier brief, then add the blocker verifier rows and
+  report that band's sampled refutation rate" asked for that report, so the
+  rewrite explains the new failure.
 
-Five evals moved from fail to pass without any skill change:
-`baseline_kept_on_partial_read`, `baseline_lint_without_stash`,
-`declared_shape_switch_named`, `verdict_waits_for_open_checker`, and
-`verifier_rows_from_findings`. The shorter prompt left the run to the doctrine
-it now has to read, and the run followed it. `role_depth_recorded` passes 11 of
-11 with the tally-block instruction removed, so `close` condition 7 carried the
-requirement the 2026-11-11 prompt used to state.
+Five evals moved from fail to pass without any skill change, and two of those
+moves rest on an inconclusive Before value: `baseline_kept_on_partial_read` and
+`baseline_lint_without_stash` grade red in `run-20261126-082435`, whose worker
+did not complete, so only their completed After run measures the rewrite. The
+other three, `declared_shape_switch_named`, `verdict_waits_for_open_checker`,
+and `verifier_rows_from_findings`, moved from a completed pre-rewrite fail. The
+shorter prompt left the run to the doctrine it now has to read, and the run
+followed it. `role_depth_recorded` passes 11 of 11 with the tally-block
+instruction removed, so `close` condition 7 carried the requirement the
+2026-11-11 prompt used to state.
