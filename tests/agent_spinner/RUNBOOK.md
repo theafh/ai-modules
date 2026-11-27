@@ -139,6 +139,9 @@ runs per query, graded at the 50%-over-three threshold.
 | 2026-11-14 | Cursor 2026.10.22-27dcf5f | `auto` | Cursor | same trimmed description, deployed copy, run 1 | 7/8 | 8/8 | 2/2 |
 | 2026-11-14 | Cursor 2026.10.22-27dcf5f | `auto` | Cursor | same trimmed description, deployed copy, run 2 | 8/8 | 7/8 | 2/2 |
 | 2026-11-14 | Cursor 2026.10.22-27dcf5f | `auto` | Cursor | same trimmed description, deployed copy, run 3 | 7/8 | 7/8 | 2/2 |
+| 2026-11-27 | Cursor 2026.11.22-e9042b2 | `auto` | Cursor | same trimmed description, scratch-home copy, run 1 | 8/8 | 8/8 | 2/2 |
+| 2026-11-27 | Cursor 2026.11.22-e9042b2 | `auto` | Cursor | same trimmed description, scratch-home copy, run 2 | 8/8 | 8/8 | 2/2 |
+| 2026-11-27 | Cursor 2026.11.22-e9042b2 | `auto` | Cursor | same trimmed description, scratch-home copy, run 3 | 8/8 | 8/8 | 2/2 |
 
 Run output stays local and is not committed, so the table rows above are the record.
 
@@ -154,6 +157,22 @@ tool names do I need for a read-only subagent on each harness we target?"
 loaded `agent_spinner`. With the description and build unchanged, the drift sits
 in the router behind `auto`; the trigger-drift task in the backlog owns the
 follow-up.
+
+The 2026-11-27 runs re-measured the same trimmed description, unchanged, through
+the scratch-home route against the 2026-11-10 baseline on Cursor
+`2026.11.22-e9042b2`. All three runs scored 18/18 precise with no per-query
+change against the baseline, and both previously drifted queries now behave as
+expected in every run: "merge what the helper agents reported into one answer
+without just counting how many of them agreed" loaded `agent_spinner` 3/3, and
+"which tool names do I need for a read-only subagent on each harness we target?"
+loaded `harness_portability` 3/3 and never `agent_spinner`. The 2026-11-14
+regression does not reproduce on the current router, so the set holds its 18/18
+baseline on the default vendor again.
+
+Those confirming runs stand as the proof for the trigger-drift task, and no
+`description:` edit shipped: a rewrite was drafted, budget-checked, and reverted
+once the measurement showed the premise no longer holds. Because no description
+changed, `trigger_overlap.py` was not run and names no set to re-measure.
 
 The 2026-11-09 Cursor runs used the scratch-home route above, with the baseline
 run staging the parent commit's `SKILL.md` and the changed run staging the

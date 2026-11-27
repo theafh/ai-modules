@@ -2,9 +2,11 @@
 description: "Win back the two agent_spinner trigger queries that regressed on Cursor against the 18/18 baseline: the helper-report merge ask, and the harness tool-name ask that belongs to harness_portability."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-14T16:08:26Z
-updated: 2026-11-19T18:57:58Z
-status: checked
+updated: 2026-11-27T13:05:00Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Win back agent_spinner's two drifted trigger queries
