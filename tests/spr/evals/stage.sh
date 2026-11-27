@@ -4,7 +4,7 @@
 # Usage:
 #   stage.sh <eval_id> [target_dir]
 #
-# Prints three name=value lines on stdout, each value already quoted with
+# Prints two name=value lines on stdout, each value already quoted with
 # printf %q so the lines are safe to `eval`:
 #
 #   sandbox_proj=<absolute path to the project holding source.md>

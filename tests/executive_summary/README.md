@@ -18,7 +18,7 @@ Pattern A harness for `plugins/knowledge_management/skills/executive_summary`.
 ```text
 evals/
   evals.json
-  stage.sh            stage an eval, print sandbox_proj/skill_path/prompt
+  stage.sh            stage an eval, print sandbox_proj/prompt
   grade.sh            deterministic checks
   judge.py            refute-biased fidelity and ordering judge
   run.py              Pattern A runner
