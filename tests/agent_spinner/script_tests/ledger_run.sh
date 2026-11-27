@@ -3558,6 +3558,84 @@ PY
     else
         bad "a refused settlement still settles the other rows and rewrites one tally region"
     fi
+
+    tdir="$base/terminal"
+    setup_repo "$tdir"
+    ledger "$tdir" init --unit produce:a --unit produce:b --unit produce:c >/dev/null 2>&1
+    "$PY" - "$tdir/.agent_spinner/roster.tsv" <<'PY'
+import sys
+
+path = sys.argv[1]
+states = {"produce:a": "accepted", "produce:b": "failed", "produce:c": "inability"}
+rows = []
+for line in open(path):
+    parts = line.rstrip("\n").split("\t")
+    if parts[0] in states:
+        parts[6] = states[parts[0]]
+        parts[19] = "file"
+    rows.append("\t".join(parts))
+open(path, "w").write("\n".join(rows) + "\n")
+PY
+    if ledger "$tdir" close --stopped > "$tdir/.agent_spinner/close.out" 2>&1; then
+        ok "close --stopped exits 0 with only accepted, failed, and inability rows"
+    else
+        bad "close --stopped exits 0 with only accepted, failed, and inability rows"
+    fi
+    if "$PY" - "$tdir" <<'PY'
+import json
+import os
+import sys
+
+run = sys.argv[1]
+roster = {}
+for line in open(os.path.join(run, ".agent_spinner", "roster.tsv")):
+    parts = line.rstrip("\n").split("\t")
+    roster[parts[0]] = parts[6]
+want = {"produce:a": "accepted", "produce:b": "failed", "produce:c": "inability"}
+if roster != want:
+    raise SystemExit("terminal states changed: %s" % roster)
+ledger_path = os.path.join(run, ".agent_spinner", "ledger.jsonl")
+records = []
+if os.path.exists(ledger_path):
+    records = [
+        json.loads(line)
+        for line in open(ledger_path)
+        if line.strip()
+    ]
+if any(r.get("type") == "stopped" and r.get("label") in want for r in records):
+    raise SystemExit("terminal row carries a stopped record")
+PY
+    then
+        ok "terminal rows keep their state and gain no stopped record"
+    else
+        bad "terminal rows keep their state and gain no stopped record"
+    fi
+
+    mdir="$base/metadata"
+    setup_repo "$mdir"
+    ledger "$mdir" init --unit produce:a >/dev/null 2>&1
+    ledger "$mdir" dispatch produce:a >/dev/null 2>&1
+    printf 'residue\n' > "$mdir/residue.log"
+    printf '2026-02-02\n' >> "$mdir/NOTES.md"
+    git -C "$mdir" add -A
+    git -C "$mdir" commit -qm "move head before the stop"
+    ledger "$mdir" close --stopped > "$mdir/.agent_spinner/close.out" 2>&1
+    if "$PY" - "$mdir" <<'PY'
+import json
+import os
+import sys
+
+data = json.load(open(os.path.join(sys.argv[1], ".agent_spinner", "run.json")))
+paths = [c.get("path") for c in data.get("changes", [])]
+for wanted in ("<HEAD>", "<ignored-residue>"):
+    if wanted not in paths:
+        raise SystemExit("%s absent from %s" % (wanted, paths))
+PY
+    then
+        ok "the settled change list keeps the angle-bracket metadata entries"
+    else
+        bad "the settled change list keeps the angle-bracket metadata entries"
+    fi
 }
 
 scenario_stopped_report_tally() {
