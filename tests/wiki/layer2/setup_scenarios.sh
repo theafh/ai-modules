@@ -2820,7 +2820,7 @@ stage_AS-30() {
         "Redaction leaves no trace in the"
     local sb
     sb=$(reset_sandbox AS-30)
-    stage "$sb/HOME/proj"    git -C "$sb/HOME/proj" init -q
+    stage "$sb/HOME/proj"
     "$INIT" "$sb/HOME/proj/wiki" >/dev/null
     local wiki="$sb/HOME/proj/wiki"
     _stage_stale_log_preamble "$wiki" \

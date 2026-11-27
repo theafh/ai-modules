@@ -2,7 +2,7 @@
 description: "Medium-priority OpenCode V2 plugin that keeps a rolling summary and substitutes a compacted request only when the gateway's cold-context limit would force compaction."
 scope: harness-plugins/opencode_v2
 created: 2026-11-11T19:24:51Z
-updated: 2026-11-27T08:22:00Z
+updated: 2026-11-27T08:45:00Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -23,12 +23,12 @@ The 2026-11-11 baseline was accurate and still reproduces: at a 2026-11-12T00:00
 | --- | --- | --- |
 | Completed compactions (gateway models) | 9 | 39 (33 auto, 6 manual), plus 3 failed |
 | Gateway sessions | 6,789 | 15,625 |
-| Share of gateway sessions | 0.13% | 0.19% |
+| Share of gateway sessions | 0.13% | 0.25% |
 | Gateway root sessions | 643 | 1,121 |
 | Share of gateway root sessions | 1.24% | 2.50% |
 | Root sessions with ≥100 assistant messages | 79 | 266 |
 | …of which compacted | 8 (10.13%) | 27 (10.15%) |
-| Compactions per compacted session | exactly 1 | 1–3; 4 of 36 sessions repeat |
+| Compactions per compacted session | exactly 1 | 1–3; 39 compactions across 36 compacted sessions |
 
 Two facts carry the priority change:
 
