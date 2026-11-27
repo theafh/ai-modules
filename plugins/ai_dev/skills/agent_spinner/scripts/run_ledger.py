@@ -3760,18 +3760,28 @@ def rewrite_report_tally(led):
     out = []
     inside = False
     replaced = False
+    buffered = []
     for line in lines:
         stripped = line.strip()
         if stripped == "TALLY-BEGIN":
             inside = True
             replaced = True
             out.append(block)
+            buffered = []
             continue
         if inside:
             if stripped == "TALLY-END":
                 inside = False
+                buffered = []
+                continue
+            buffered.append(line)
             continue
         out.append(line)
+    if inside:
+        # The region never closed, so the lines after its begin marker are
+        # the only ones it can claim: restore them after the inserted block
+        # instead of dropping the rest of the report.
+        out.extend(buffered)
     if not replaced:
         out.append("")
         out.append(block)

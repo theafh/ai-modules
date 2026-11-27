@@ -593,7 +593,10 @@ and `unknown` become `unreturned` under `close --stopped`, and `close
 --stopped` writes the settled tally block into `report.md` before it prints the
 modified, untouched, unknown, not dispatched, and violation rows.
 The `unknown` and `not dispatched` lists show each settled row's pre-settlement
-state from its `stopped` record.
+state from its `stopped` record. For a row-attributed landed write that no
+accepted check, gate, or taken-on-word disposition covers, the path-level
+`stopped` record `close --stopped` appends is the disposition that clears
+condition 3.
 
 ### Roster columns
 

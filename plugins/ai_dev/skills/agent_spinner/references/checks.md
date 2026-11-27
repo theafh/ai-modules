@@ -55,7 +55,9 @@ outbound draft under `outbound/`.
 another row, a covering gate, or an unverified disposition. A row closed by
 `accept --classify` is a classified row: it covers its path only when a
 narrowing's `--drops` list names that row, so a classified row without that
-narrowing leaves the path uncovered.
+narrowing leaves the path uncovered. A row-attributed landed write that nothing
+else covers is cleared by the path-level `stopped` record `close --stopped`
+appends for it.
 
 ## C2. Build a clean checker.
 

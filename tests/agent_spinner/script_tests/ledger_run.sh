@@ -3686,6 +3686,28 @@ scenario_stopped_report_tally() {
     else
         bad "a missing report.md is created carrying one tally region"
     fi
+
+    dir="$base/unterminated"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    printf '# Report\n\nTALLY-BEGIN\nrows 99\n\nAfter unterminated.\n' > "$dir/.agent_spinner/report.md"
+    ledger "$dir" close --stopped > "$dir/.agent_spinner/close.out" 2>&1
+    regions=$(grep -c '^TALLY-BEGIN$' "$dir/.agent_spinner/report.md")
+    if [ "$regions" -eq 1 ] && grep -q 'After unterminated\.' "$dir/.agent_spinner/report.md"; then
+        ok "an unterminated tally region is replaced once and the tail text survives"
+    else
+        bad "an unterminated tally region is replaced once and the tail text survives"
+    fi
+    if awk '
+        /^TALLY-END$/ { end = NR }
+        /After unterminated\./ { tail = NR }
+        END { exit (end && tail && tail > end) ? 0 : 1 }
+    ' "$dir/.agent_spinner/report.md"; then
+        ok "the unterminated region's tail text sits below the rewritten block"
+    else
+        bad "the unterminated region's tail text sits below the rewritten block"
+    fi
 }
 
 scenario_stopped_landed_write() {
