@@ -2,8 +2,8 @@
 description: "Win back the two agent_spinner trigger queries that regressed on Cursor against the 18/18 baseline: the helper-report merge ask, and the harness tool-name ask that belongs to harness_portability."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-14T16:08:26Z
-updated: 2026-11-27T13:05:00Z
-status: implemented
+updated: 2026-11-27T13:20:00Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: false
@@ -22,7 +22,7 @@ The agent_spinner trigger set holds its 18/18 precise baseline on the default ve
 
 - **The measurement.** The baseline is the 2026-11-10 Cursor `auto` run of the set (3 runs per query, 18/18), recorded in `tests/agent_spinner/RUNBOOK.md` and taken on the trimmed description that commit `1174815` shipped. On 2026-11-14, three runs of the same set against that baseline each failed one or both queries at 0/3: 17/18, 17/18, and 16/18. Each query failed in two of the three runs, as the RUNBOOK's "Recorded measurements" table records. The deployed copy under the Cursor skills root matched the source description throughout, so the description did not change; the router behind Cursor's `auto` did. Trigger-run output stays local, so re-measure rather than assume a prior result on another machine.
 - **The text in play.** agent_spinner's description in `plugins/ai_dev/skills/agent_spinner/SKILL.md` already lists "aggregating helper reports" and ends with "Per-harness facts stay with harness_portability". harness_portability's description claims "agent definitions, agent frontmatter, tool allowlists, read-only agent enforcement".
-- **Prior art.** [The deferred description-recall task](archive/ai-dev_agent-spinner-description-recall.md) found that adding keyword surface does not raise agent_spinner's recall, and it was parked when no tested rewrite beat the description of its day. That finding constrains this task: a fix that only adds trigger phrases is the approach already known not to work. `tests/CLAUDE.md`'s trigger-eval section ("Acting on family-only passes") says a sibling stealing a query is usually fixed in the sibling's description.
+- **Prior art.** [The deferred description-recall task](ai-dev_agent-spinner-description-recall.md) found that adding keyword surface does not raise agent_spinner's recall, and it was parked when no tested rewrite beat the description of its day. That finding constrains this task: a fix that only adds trigger phrases is the approach already known not to work. `tests/CLAUDE.md`'s trigger-eval section ("Acting on family-only passes") says a sibling stealing a query is usually fixed in the sibling's description.
 
 ## Approach
 
