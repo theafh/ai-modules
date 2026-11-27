@@ -1,8 +1,8 @@
 ---
-description: "Build slop_catch in ai_editorial: a ported Python linter and a structural-tell ruleset that together list a draft's AI tells, score their weighted density, and state the reduction target, run as the humanizer's check pass."
+description: "Build slop_catch in ai_editorial: a ported Python linter plus a structural-tell ruleset that list a draft's AI tells, score weighted density, and state the reduction target."
 scope: "ai_editorial plugin"
 created: 2026-06-01T21:31:06Z
-updated: 2026-11-25T16:02:37Z
+updated: 2026-11-27T14:05:00Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -46,7 +46,7 @@ The skill delivers that through two detection layers that stay distinct end to e
 
 ### Source inventory — exact patterns
 
-**Provenance.** The source is the `ai_slop_detector` Chrome extension at commit `df0332d`, read from `content.js` (detection tables at lines 25–190), `notes/slop_vocab.md` (the human-readable term list), and `notes/ChatGPT-Watermark Detection Techniques.md` (the character-level research). `content.js` is the executable source of truth: every one of the 141 lines in `notes/slop_vocab.md` is matched by a source regex, while the table encodes `scaffold` and `supercharge` as stems rather than enumerating their forms. The table, not the prose list, is the contract. Every regex below is transcribed verbatim from the source, including its duplicated characters, missing variants, and inconsistent quantifiers. Treat the transcription as the fidelity contract: the port reproduces each expression's matching behaviour, and the only permitted changes are the JS-to-Python translations listed under **Translation rules**.
+**Provenance.** The source is the `ai_slop_detector` Chrome extension at commit `df0332d`, read from `content.js` (its detection tables, the section the port transcribes verbatim below), `notes/slop_vocab.md` (the human-readable term list), and `notes/ChatGPT-Watermark Detection Techniques.md` (the character-level research). `content.js` is the executable source of truth: every one of the 141 lines in `notes/slop_vocab.md` is matched by a source regex, while the table encodes `scaffold` and `supercharge` as stems rather than enumerating their forms. The table, not the prose list, is the contract. Every regex below is transcribed verbatim from the source, including its duplicated characters, missing variants, and inconsistent quantifiers. Treat the transcription as the fidelity contract: the port reproduces each expression's matching behaviour, and the only permitted changes are the JS-to-Python translations listed under **Translation rules**.
 
 **Single-word vocabulary patterns (35).** Each line gives the port's stable tell id, then the source regex literal. The source's array order carries no meaning; the id is a stable slug so a report does not shift when the table is edited.
 

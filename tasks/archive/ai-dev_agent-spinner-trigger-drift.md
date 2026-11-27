@@ -2,7 +2,7 @@
 description: "Win back the two agent_spinner trigger queries that regressed on Cursor against the 18/18 baseline: the helper-report merge ask, and the harness tool-name ask that belongs to harness_portability."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-14T16:08:26Z
-updated: 2026-11-27T11:40:00Z
+updated: 2026-11-27T14:10:00Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
@@ -38,3 +38,7 @@ The agent_spinner trigger set holds its 18/18 precise baseline on the default ve
 - Each of the two queries either passes in at least two of three post-change runs against the 2026-11-10 baseline, with no other query regressing, or carries a `note` disposition in `tests/trigger_evals/agent_spinner.json`. A query whose confirming run already passes needs no description change: that confirming run, recorded in the RUNBOOK's "Recorded measurements" section, stands as its proof.
 - A description change ships under the standing versioning rules, and `skill_doctor`'s `discovery_safety.py` reports the new description under the listing budget.
 - `tests/agent_spinner/RUNBOOK.md` records the output of `python3 tests/agent_spinner/trigger_overlap.py` after each material `description:` edit, and the disposition of every set it names including that set's scratch-home cross-set run, or states that no set qualified; for a named set whose skills could not be staged from source, it records the set as not run with the staging error in place of that run.
+
+## Outcome
+
+The confirming measurement refuted the premise this task was written on, so it closed with no `description:` edit. Three 2026-11-27 runs on Cursor `2026.11.22-e9042b2` at `auto` each scored 18/18 precise against the 2026-11-10 baseline with no per-query change: "merge what the helper agents reported into one answer without just counting how many of them agreed" loaded `agent_spinner` 3/3, and "which tool names do I need for a read-only subagent on each harness we target?" loaded `harness_portability` 3/3 and never `agent_spinner`. The 2026-11-14 regression does not reproduce on the current router, so the set holds its 18/18 baseline and acceptance item 2's confirming-run branch is the one that applied. A description rewrite was drafted and budget-checked (972 characters, no `discovery_safety` warning) and then reverted, because the confirming runs made it unnecessary. The runs are recorded in `tests/agent_spinner/RUNBOOK.md`'s "Recorded measurements" section, and the serial-loop and routing work this task's sibling still owed is owned by `../ai-dev_agent-spinner-trigger-routing.md`.
