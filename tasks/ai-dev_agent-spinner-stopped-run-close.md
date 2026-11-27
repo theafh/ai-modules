@@ -2,9 +2,11 @@
 description: "Let close --stopped end a stopped agent_spinner run by settling its in-flight and never-dispatched rows, so a stopped run closes cleanly instead of staying open forever."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-27T09:00:44Z
-updated: 2026-11-27T17:13:09Z
-status: ready
+updated: 2026-11-27T20:24:55Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Let a stopped agent_spinner run close cleanly

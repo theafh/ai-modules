@@ -87,6 +87,13 @@ setup_repo() {
     rm -rf "$dir"
     mkdir -p "$dir"
     git -C "$dir" init -q
+    toplevel="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)"
+    expected="$(cd "$dir" && pwd -P)"
+    if [ "$toplevel" != "$expected" ]; then
+        printf 'setup_repo: %s resolved to git toplevel %s, refusing to configure or commit there\n' "$dir" "${toplevel:-<none>}" >&2
+        bad "setup_repo refuses a directory that is not its own git toplevel"
+        return 1
+    fi
     git -C "$dir" config user.email "ledger@example.invalid"
     git -C "$dir" config user.name "Ledger Tests"
     printf 'alpha\nbeta\n' > "$dir/a.txt"
@@ -1301,6 +1308,24 @@ PY
     close_assert "$dir" "close --stopped lists modified paths with exit 3" 'modified:' --stopped
     close_assert "$dir" "close --stopped lists untouched paths with exit 3" 'untouched:' --stopped
     close_assert "$dir" "close --stopped lists unknown paths with exit 3" 'unknown:' --stopped
+    if "$PY" - "$dir/.agent_spinner/run.json" <<'PY'
+import json
+import sys
+
+data = json.load(open(sys.argv[1]))
+if any(c.get("path") == "stray.txt" for c in data.get("changes", [])):
+    raise SystemExit(1)
+PY
+    then
+        ok "a stray path stays out of the settled change list"
+    else
+        bad "a stray path stays out of the settled change list"
+    fi
+    if grep -q 'condition 5' "$dir/.agent_spinner/close.out" && grep -q 'stray.txt' "$dir/.agent_spinner/close.out"; then
+        ok "condition 5 names the stray path after settlement"
+    else
+        bad "condition 5 names the stray path after settlement"
+    fi
 }
 
 scenario_run_directory() {
@@ -3190,8 +3215,8 @@ PY
         ok "an orchestrator-raised packet renders no helper's preferred end state line"
     fi
     ledger "$dir" dispose --gate pkt-f --answered widen >/dev/null 2>&1
-    ledger "$dir" close > "$dir/close.out" 2>&1
-    if grep -q 'condition 6: user gate F' "$dir/close.out"; then
+    ledger "$dir" close > "$dir/.agent_spinner/close.out" 2>&1
+    if grep -q 'condition 6: user gate F' "$dir/.agent_spinner/close.out"; then
         bad "a packet-id answer clears the user gate --open-fork opened"
     else
         ok "a packet-id answer clears the user gate --open-fork opened"
@@ -3360,8 +3385,8 @@ for line in open(path):
     rows.append("\t".join(parts))
 open(path, "w").write("\n".join(rows) + "\n")
 PY
-    ledger "$dir" close --stopped > "$dir/close.out" 2>&1
-    if "$PY" - "$dir/close.out" <<'PY'
+    ledger "$dir" close --stopped > "$dir/.agent_spinner/close.out" 2>&1
+    if "$PY" - "$dir/.agent_spinner/close.out" <<'PY'
 import sys
 
 lines = [line.rstrip("\n") for line in open(sys.argv[1])]
@@ -3399,6 +3424,288 @@ PY
         ok "close --stopped routes each unsettled row to its own list"
     else
         bad "close --stopped routes each unsettled row to its own list"
+    fi
+}
+
+scenario_stopped_settlement() {
+    base="$1"
+
+    dir="$base/run1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit produce:b --unit produce:c >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    "$PY" - "$dir/.agent_spinner/roster.tsv" <<'PY'
+import sys
+
+path = sys.argv[1]
+rows = []
+for line in open(path):
+    parts = line.rstrip("\n").split("\t")
+    if parts[0] == "produce:c":
+        parts[6] = "unknown"
+    rows.append("\t".join(parts))
+open(path, "w").write("\n".join(rows) + "\n")
+PY
+    if ledger "$dir" close --stopped > "$dir/.agent_spinner/close.out" 2>&1; then
+        ok "close --stopped exits 0 when settlement leaves only terminal rows"
+    else
+        bad "close --stopped exits 0 when settlement leaves only terminal rows"
+    fi
+    if "$PY" - "$dir" <<'PY'
+import json
+import os
+import sys
+
+run = sys.argv[1]
+roster = {}
+for line in open(os.path.join(run, ".agent_spinner", "roster.tsv")):
+    parts = line.rstrip("\n").split("\t")
+    roster[parts[0]] = parts[6]
+want = {"produce:a": "unreturned", "produce:b": "dropped", "produce:c": "unreturned"}
+for label, state in want.items():
+    if roster.get(label) != state:
+        raise SystemExit("row %s is %s" % (label, roster.get(label)))
+records = [
+    json.loads(line)
+    for line in open(os.path.join(run, ".agent_spinner", "ledger.jsonl"))
+    if line.strip()
+]
+stopped = [r for r in records if r.get("type") == "stopped" and r.get("label")]
+expected = {
+    "produce:a": ("dispatched", "in-flight at stop"),
+    "produce:b": ("pending", "never dispatched"),
+    "produce:c": ("unknown", "in-flight at stop"),
+}
+for label, (state, reason) in expected.items():
+    mine = [r for r in stopped if r.get("label") == label]
+    if len(mine) != 1:
+        raise SystemExit("stopped record count for %s is %d" % (label, len(mine)))
+    if mine[0].get("from") != state or mine[0].get("reason") != reason:
+        raise SystemExit("bad stopped record for %s" % label)
+    if mine[0].get("outcome") != want[label]:
+        raise SystemExit("bad outcome for %s" % label)
+PY
+    then
+        ok "settled rows end terminal with one stopped record each"
+    else
+        bad "settled rows end terminal with one stopped record each"
+    fi
+
+    before=$(wc -l < "$dir/.agent_spinner/ledger.jsonl" | tr -d ' ')
+    ledger "$dir" close --stopped > "$dir/.agent_spinner/close2.out" 2>&1
+    after=$(wc -l < "$dir/.agent_spinner/ledger.jsonl" | tr -d ' ')
+    if [ "$before" -eq "$after" ]; then
+        ok "a second close --stopped appends no record"
+    else
+        bad "a second close --stopped appends no record"
+    fi
+    sed -n '/TALLY-BEGIN/,/TALLY-END/p' "$dir/.agent_spinner/close.out" > "$dir/.agent_spinner/tally1.txt"
+    sed -n '/TALLY-BEGIN/,/TALLY-END/p' "$dir/.agent_spinner/close2.out" > "$dir/.agent_spinner/tally2.txt"
+    if cmp -s "$dir/.agent_spinner/tally1.txt" "$dir/.agent_spinner/tally2.txt"; then
+        ok "a second close --stopped prints the same tally block"
+    else
+        bad "a second close --stopped prints the same tally block"
+    fi
+
+    vdir="$base/violation"
+    setup_repo "$vdir"
+    ledger "$vdir" init --unit produce:a --unit produce:d >/dev/null 2>&1
+    ledger "$vdir" dispatch produce:a >/dev/null 2>&1
+    "$PY" - "$vdir/.agent_spinner/roster.tsv" <<'PY'
+import sys
+
+path = sys.argv[1]
+rows = []
+for line in open(path):
+    parts = line.rstrip("\n").split("\t")
+    if parts[0] == "produce:d":
+        parts[6] = "violation"
+    rows.append("\t".join(parts))
+open(path, "w").write("\n".join(rows) + "\n")
+PY
+    ledger "$vdir" close --stopped > "$vdir/.agent_spinner/close.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 3 ] && grep -q 'condition 1' "$vdir/.agent_spinner/close.out" && grep -q 'produce:d' "$vdir/.agent_spinner/close.out"; then
+        ok "a violation row still refuses close --stopped with condition 1"
+    else
+        bad "a violation row still refuses close --stopped with condition 1 (rc=$rc)"
+    fi
+    if "$PY" - "$vdir" <<'PY'
+import json
+import os
+import sys
+
+run = sys.argv[1]
+roster = {}
+for line in open(os.path.join(run, ".agent_spinner", "roster.tsv")):
+    parts = line.rstrip("\n").split("\t")
+    roster[parts[0]] = parts[6]
+if roster.get("produce:a") != "unreturned" or roster.get("produce:d") != "violation":
+    raise SystemExit("states %s" % roster)
+records = [
+    json.loads(line)
+    for line in open(os.path.join(run, ".agent_spinner", "ledger.jsonl"))
+    if line.strip()
+]
+if any(r.get("type") == "stopped" and r.get("label") == "produce:d" for r in records):
+    raise SystemExit("violation row carries a stopped record")
+report = open(os.path.join(run, ".agent_spinner", "report.md")).read()
+if report.count("TALLY-BEGIN") != 1:
+    raise SystemExit("report carries %d tally regions" % report.count("TALLY-BEGIN"))
+PY
+    then
+        ok "a refused settlement still settles the other rows and rewrites one tally region"
+    else
+        bad "a refused settlement still settles the other rows and rewrites one tally region"
+    fi
+}
+
+scenario_stopped_report_tally() {
+    base="$1"
+
+    dir="$base/sentinel"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    printf '# Report\n\nTALLY-BEGIN\nrows 99\nTALLY-END\n\nAfter.\n' > "$dir/.agent_spinner/report.md"
+    ledger "$dir" close --stopped > "$dir/.agent_spinner/close.out" 2>&1
+    regions=$(grep -c '^TALLY-BEGIN$' "$dir/.agent_spinner/report.md")
+    if [ "$regions" -eq 1 ] && ! grep -q 'rows 99' "$dir/.agent_spinner/report.md" && grep -q 'After\.' "$dir/.agent_spinner/report.md"; then
+        ok "a sentinel tally region is replaced once and the report text survives"
+    else
+        bad "a sentinel tally region is replaced once and the report text survives"
+    fi
+    sed -n '/TALLY-BEGIN/,/TALLY-END/p' "$dir/.agent_spinner/report.md" > "$dir/.agent_spinner/from-report.txt"
+    sed -n '/TALLY-BEGIN/,/TALLY-END/p' "$dir/.agent_spinner/close.out" > "$dir/.agent_spinner/from-close.txt"
+    if cmp -s "$dir/.agent_spinner/from-report.txt" "$dir/.agent_spinner/from-close.txt"; then
+        ok "the written tally region equals the printed block"
+    else
+        bad "the written tally region equals the printed block"
+    fi
+
+    dir="$base/no-region"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    printf '# Report\n\nBody kept.\n' > "$dir/.agent_spinner/report.md"
+    ledger "$dir" close --stopped > "$dir/.agent_spinner/close.out" 2>&1
+    regions=$(grep -c '^TALLY-BEGIN$' "$dir/.agent_spinner/report.md")
+    if [ "$regions" -eq 1 ] && grep -q 'Body kept\.' "$dir/.agent_spinner/report.md"; then
+        ok "a report with no tally region gains exactly one and keeps its text"
+    else
+        bad "a report with no tally region gains exactly one and keeps its text"
+    fi
+
+    dir="$base/missing"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    rm -f "$dir/.agent_spinner/report.md"
+    ledger "$dir" close --stopped > "$dir/.agent_spinner/close.out" 2>&1
+    regions=$(grep -c '^TALLY-BEGIN$' "$dir/.agent_spinner/report.md")
+    if [ "$regions" -eq 1 ]; then
+        ok "a missing report.md is created carrying one tally region"
+    else
+        bad "a missing report.md is created carrying one tally region"
+    fi
+}
+
+scenario_stopped_landed_write() {
+    base="$1"
+
+    dir="$base/dropped-check"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit-path produce:a=a.txt >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    printf 'alpha\nbeta\ndelta\n' > "$dir/a.txt"
+    ledger "$dir" diff --add-checks >/dev/null 2>&1
+    ledger "$dir" close --stopped > "$dir/.agent_spinner/close.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 0 ] && grep -q 'a.txt' "$dir/.agent_spinner/close.out"; then
+        ok "a stopped run with a row-attributed write closes with exit 0"
+    else
+        bad "a stopped run with a row-attributed write closes with exit 0 (rc=$rc)"
+    fi
+    if "$PY" - "$dir" <<'PY'
+import json
+import os
+import sys
+
+run = sys.argv[1]
+data = json.load(open(os.path.join(run, ".agent_spinner", "run.json")))
+if not any(c.get("path") == "a.txt" for c in data.get("changes", [])):
+    raise SystemExit("a.txt absent from changes")
+records = [
+    json.loads(line)
+    for line in open(os.path.join(run, ".agent_spinner", "ledger.jsonl"))
+    if line.strip()
+]
+mine = [
+    r
+    for r in records
+    if r.get("type") == "stopped" and r.get("path") == "a.txt" and not r.get("label")
+]
+if len(mine) != 1 or mine[0].get("dropped_check") != ["check:a.txt"]:
+    raise SystemExit("stopped path record %s" % mine)
+PY
+    then
+        ok "the settlement records the path with its dropped check"
+    else
+        bad "the settlement records the path with its dropped check"
+    fi
+    if grep -q 'condition 3\|condition 5' "$dir/.agent_spinner/close.out"; then
+        bad "the settled write reports no condition 3 or 5"
+    else
+        ok "the settled write reports no condition 3 or 5"
+    fi
+
+    adir="$base/accepted-check"
+    setup_repo "$adir"
+    ledger "$adir" init --unit produce:a --unit-path produce:a=a.txt >/dev/null 2>&1
+    ledger "$adir" dispatch produce:a >/dev/null 2>&1
+    printf 'alpha\nbeta\ndelta\n' > "$adir/a.txt"
+    ledger "$adir" diff --add-checks >/dev/null 2>&1
+    "$PY" - "$adir/.agent_spinner/roster.tsv" <<'PY'
+import sys
+
+path = sys.argv[1]
+rows = []
+for line in open(path):
+    parts = line.rstrip("\n").split("\t")
+    if parts[0] == "check:a.txt":
+        parts[6] = "accepted"
+        parts[19] = "file"
+    rows.append("\t".join(parts))
+open(path, "w").write("\n".join(rows) + "\n")
+PY
+    ledger "$adir" close --stopped > "$adir/.agent_spinner/close.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 0 ]; then
+        ok "an accepted check covers its path under close --stopped"
+    else
+        bad "an accepted check covers its path under close --stopped (rc=$rc)"
+    fi
+    if "$PY" - "$adir" <<'PY'
+import json
+import os
+import sys
+
+run = sys.argv[1]
+records = [
+    json.loads(line)
+    for line in open(os.path.join(run, ".agent_spinner", "ledger.jsonl"))
+    if line.strip()
+]
+if any(
+    r.get("type") == "stopped" and r.get("path") == "a.txt" and not r.get("label")
+    for r in records
+):
+    raise SystemExit("accepted path carries a stopped record")
+PY
+    then
+        ok "an accepted path gains no stopped path record"
+    else
+        bad "an accepted path gains no stopped path record"
     fi
 }
 
@@ -4230,6 +4537,9 @@ run_all_scenarios() {
     scenario_dispose_rows "$root/dispose-rows"
     scenario_unreturned_redispatch "$root/unreturned-redispatch"
     scenario_stopped_row_lists "$root/stopped-rows"
+    scenario_stopped_settlement "$root/stopped-settlement"
+    scenario_stopped_report_tally "$root/stopped-report"
+    scenario_stopped_landed_write "$root/stopped-landed"
     scenario_audit "$root/audit"
     scenario_repeat_audit_incidents "$root/audit-repeat"
     scenario_own_session_windows "$root/own-session-windows"

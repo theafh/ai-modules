@@ -128,16 +128,18 @@ Helper's preferred end state (fork record survey:reference:forks:0):
 
 ## Stop report
 
-Built from `close --stopped`, which prints the tally block and the modified,
-untouched, unknown, not dispatched, and violation row lists. While any row is
-non-terminal it prints them and refuses, exiting non-zero, so the stop report
-says so first, in its opening sentence, which carries the answer, the tier,
-helpers dispatched against returned, and whether `close` exited 0, and names
-the result as no clean close rather than only an exit code.
+Built from `close --stopped`, which settles each `pending`, `dispatched`, and
+`unknown` row to a terminal outcome, writes the settled tally block into
+`report.md`, and prints the modified, untouched, unknown, not dispatched, and
+violation row lists. A `violation` row or any other close condition still
+refuses with a non-zero exit, so the stop report says so first, in its opening
+sentence, which carries the answer, the tier, helpers dispatched against
+returned, and whether `close --stopped` exited 0, and names the result as no
+clean close rather than only an exit code.
 
 ```text
 Stopped after 2 of 4 writers, at the spawned-roles tier, 2 dispatched against
-2 returned, and `close --stopped` exited 3, refusing while 2 rows were pending.
+2 returned, and `close --stopped` exited 0, settling 2 pending rows as dropped.
 
 Modified: docs/setup.md, docs/deploy.md.
 Untouched: docs/upgrade.md, docs/rollback.md.

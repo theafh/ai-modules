@@ -1462,8 +1462,8 @@ python3 - "$SCRATCH/stop-no-facts.md" <<'PY'
 import sys
 path = sys.argv[1]
 text = open(path).read()
-old = "2 returned, and `close --stopped` exited 3"
-new = "2 returned. `close --stopped` exited 3"
+old = "2 returned, and `close --stopped` exited 0, settling 2 pending rows as dropped"
+new = "2 returned. `close --stopped` exited 0, settling 2 pending rows as dropped"
 if old not in text:
     raise SystemExit("stop template sentence not found")
 open(path, "w").write(text.replace(old, new, 1))

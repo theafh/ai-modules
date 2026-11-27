@@ -554,7 +554,10 @@ Create `STOP` so nothing new is dispatched.
 End the run. It prints the tally block and refuses with a non-zero exit while
 any close condition holds:
 
-1. A row is not terminal.
+1. A row that is not terminal. `close --stopped` is the exception: it settles each
+   `pending` row to `dropped` and each `dispatched` or `unknown` row to
+   `unreturned`, recording the original state and a reason on a `stopped`
+   record, and a `violation` row still refuses.
 2. A finding, incident, alternative, objection, beyond-brief, own-authority,
    or dropped-suspicion record has no disposition. An own-authority record
    written by `dispose --fork --own-decision` carries its decision and is its
@@ -584,8 +587,13 @@ any close condition holds:
     whole word, case-insensitively, ignores hyphenated compounds, and exempts
     every line from `TALLY-BEGIN` through `TALLY-END`.
 
-`close --stopped` also prints the modified, untouched, unknown, not dispatched,
-and violation rows.
+`close --stopped` settles the non-terminal rows before it evaluates these
+conditions: `pending` becomes `dropped` under `close --stopped`, `dispatched`
+and `unknown` become `unreturned` under `close --stopped`, and `close
+--stopped` writes the settled tally block into `report.md` before it prints the
+modified, untouched, unknown, not dispatched, and violation rows.
+The `unknown` and `not dispatched` lists show each settled row's pre-settlement
+state from its `stopped` record.
 
 ### Roster columns
 

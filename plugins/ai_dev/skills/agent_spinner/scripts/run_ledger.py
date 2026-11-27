@@ -2850,8 +2850,7 @@ def make_change(led, rel, before, after):
     }
 
 
-def cmd_diff(args):
-    led = Ledger()
+def collect_changes(led):
     changes = []
     if led.run.get("hashed_walk"):
         baseline = {}
@@ -2914,6 +2913,12 @@ def cmd_diff(args):
                 }
             )
 
+    return changes
+
+
+def cmd_diff(args):
+    led = Ledger()
+    changes = collect_changes(led)
     led.run["changes"] = changes
 
     if args.add_checks:
@@ -3422,6 +3427,17 @@ def change_covered(led, change, dispositions):
         return True
     path = change.get("path", "")
     for rec in led.records():
+        if (
+            rec.get("type") == "stopped"
+            and rec.get("path") == path
+            and not rec.get("label")
+        ):
+            # A stopped run's path-disposition record settles the
+            # row-attributed write it names, so the path needs no accepted
+            # check to close. A row-level stopped record names its row, not
+            # the path's disposition, so it does not cover the change.
+            return True
+    for rec in led.records():
         if rec.get("type") == "finding" and rec.get("path") == path:
             for disp in dispositions.get(rec.get("id"), []):
                 if disp.get("disposition") == "applied" and disp.get("tag") == "taken on a helper's word":
@@ -3657,8 +3673,116 @@ def close_open_items(led):
     return open_items
 
 
+def settle_stopped(led):
+    """Settle a stopped run's non-terminal rows and refresh its change list."""
+    if led.run.get("stopped_settled"):
+        return
+    outcomes = {
+        "pending": ("dropped", "never dispatched"),
+        "dispatched": ("unreturned", "in-flight at stop"),
+        "unknown": ("unreturned", "in-flight at stop"),
+    }
+    dispositions = led.dispositions()
+    for row in led.rows:
+        state = row.get("state")
+        if state in TERMINAL or state == "violation":
+            continue
+        if state not in outcomes:
+            continue
+        outcome, reason = outcomes[state]
+        row_path = norm_path(led.root, row.get("path")) if row.get("path") else ""
+        dropped_check = [
+            other.get("label")
+            for other in led.rows
+            if other.get("label", "").startswith("check:")
+            and row_path
+            and norm_path(led.root, other.get("path")) == row_path
+        ]
+        led.append(
+            {
+                "type": "stopped",
+                "label": row.get("label"),
+                "from": state,
+                "reason": reason,
+                "path": row_path,
+                "outcome": outcome,
+                "dropped_check": dropped_check,
+            }
+        )
+        row["state"] = outcome
+
+    prior = {change.get("path"): change for change in led.run.get("changes", [])}
+    row_paths = set(
+        norm_path(led.root, row.get("path")) for row in led.rows if row.get("path")
+    )
+    kept = []
+    for change in collect_changes(led):
+        path = change.get("path", "")
+        if path.startswith("<"):
+            kept.append(change)
+            continue
+        if path not in row_paths:
+            continue
+        previous = prior.get(path)
+        if previous:
+            change["checks"] = previous.get("checks", [])
+            if previous.get("gate"):
+                change["gate"] = previous.get("gate")
+        kept.append(change)
+    led.run["changes"] = kept
+
+    for change in kept:
+        path = change.get("path", "")
+        if path.startswith("<"):
+            continue
+        if change_covered(led, change, dispositions):
+            continue
+        dropped_check = [
+            row.get("label")
+            for row in led.rows
+            if row.get("label", "").startswith("check:")
+            and norm_path(led.root, row.get("path")) == path
+        ]
+        led.append({"type": "stopped", "path": path, "dropped_check": dropped_check})
+
+    led.run["stopped_settled"] = True
+    led.save()
+
+
+def rewrite_report_tally(led):
+    block = tally_block(led)
+    target = led.path("report.md")
+    text = read_text(target)
+    if not text.strip():
+        atomic_write(target, block + "\n")
+        return
+    lines = text.splitlines()
+    out = []
+    inside = False
+    replaced = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped == "TALLY-BEGIN":
+            inside = True
+            replaced = True
+            out.append(block)
+            continue
+        if inside:
+            if stripped == "TALLY-END":
+                inside = False
+            continue
+        out.append(line)
+    if not replaced:
+        out.append("")
+        out.append(block)
+    atomic_write(target, "\n".join(out).rstrip("\n") + "\n")
+
+
 def cmd_close(args):
     led = Ledger()
+    if args.stopped:
+        settle_stopped(led)
+        rewrite_report_tally(led)
     block = tally_block(led)
     print(block)
     if args.stopped:
@@ -3670,27 +3794,23 @@ def cmd_close(args):
         row_paths = set(norm_path(led.root, r.get("path")) for r in led.rows if r.get("path"))
         for path in sorted(row_paths - set(changed)):
             print("  %s" % path)
-        # Every row that is not terminal lands under exactly one heading.
-        # Only `init` creates a pending row, so a pending row was never
-        # dispatched; a dispatched row with no return file was in flight at the
-        # stop, and an unknown row is one the orchestrator marked in flight.
+        # The settled rows print their pre-settlement state from their
+        # `stopped` record; a violation row is never settled and prints live.
         groups = {"unknown": [], "not dispatched": [], "violation": []}
-        for row in led.rows:
-            state = row.get("state")
-            if state in TERMINAL:
+        for rec in led.records():
+            if rec.get("type") != "stopped" or not rec.get("label"):
                 continue
-            if state in ("dispatched", "unknown"):
-                groups["unknown"].append(row)
-            elif state == "pending":
-                groups["not dispatched"].append(row)
-            elif state == "violation":
-                groups["violation"].append(row)
-            else:
-                groups["unknown"].append(row)
+            if rec.get("from") in ("dispatched", "unknown"):
+                groups["unknown"].append((rec.get("label"), rec.get("from")))
+            elif rec.get("from") == "pending":
+                groups["not dispatched"].append((rec.get("label"), rec.get("from")))
+        for row in led.rows:
+            if row.get("state") == "violation":
+                groups["violation"].append((row.get("label"), "violation"))
         for heading in ("unknown", "not dispatched", "violation"):
             print("%s:" % heading)
-            for row in groups[heading]:
-                print("  %s state=%s" % (row.get("label"), row.get("state")))
+            for label, state in groups[heading]:
+                print("  %s state=%s" % (label, state))
     for rec in led.records():
         if rec.get("type") == "confirmation" and rec.get("provenance") == "recall-confirmed":
             print("advisory: %s claims independent support but is recall-confirmed" % rec.get("id"))
