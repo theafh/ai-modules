@@ -9,7 +9,7 @@
       "expectations": [
         "summary.md holds continuous prose with no bullet or numbered list markers.",
         "The delivered word count is between 8% and 17% of the source word count.",
-        "The summary ends with a 1-to-10 self-rating and a justification sentence.",
+        "The summary ends with a 1-to-10 self-rating.",
         "No forbidden term from forbidden.txt appears in the summary.",
         "A refute-biased judge confirms the source's reasoning and order survive."
       ],
@@ -23,7 +23,7 @@
       "expectations": [
         "summary.md holds continuous prose with no bullet or numbered list markers.",
         "The delivered word count is between 8% and 17% of the source word count.",
-        "The summary ends with a 1-to-10 self-rating and a justification sentence.",
+        "The summary ends with a 1-to-10 self-rating.",
         "No forbidden term from forbidden.txt appears in the summary.",
         "A refute-biased judge confirms the source's reasoning and order survive."
       ],

@@ -42,7 +42,7 @@ case_dir() {
   printf '%s\n' "$dir"
 }
 
-# 12 of 100 words -> 12%, inside the 8-17% window, with a rating.
+# 10 of 100 words -> 10%, inside the 8-17% window, with a rating.
 good_summary() {
   printf 'The source repeats one word a hundred times. Rating: 8/10.\n'
 }
