@@ -154,9 +154,9 @@ CLI build. Two queries regressed from 3/3 to 0/3 in two of the three runs: the
 true query "merge what the helper agents reported into one answer without just
 counting how many of them agreed" loaded no skill, and the negative query "which
 tool names do I need for a read-only subagent on each harness we target?"
-loaded `agent_spinner`. With the description and build unchanged, the drift sits
-in the router behind `auto`; the trigger-drift task in the backlog owns the
-follow-up.
+loaded `agent_spinner`. With the description and build unchanged, the drift sat
+in the router behind `auto`; the trigger-drift task took the follow-up and
+closed it by measurement, as the runs below record.
 
 The 2026-11-27 runs re-measured the same trimmed description, unchanged, through
 the scratch-home route against the 2026-11-10 baseline on Cursor
@@ -167,12 +167,17 @@ without just counting how many of them agreed" loaded `agent_spinner` 3/3, and
 "which tool names do I need for a read-only subagent on each harness we target?"
 loaded `harness_portability` 3/3 and never `agent_spinner`. The 2026-11-14
 regression does not reproduce on the current router, so the set holds its 18/18
-baseline on the default vendor again.
+baseline on the default vendor again. An earlier attempt that same day,
+`2026-11-27_123221`, aborted before it produced a scored run: a worker wrote
+into the tracked checkout, editing `plugins/ai_dev/skills/agent_spinner/SKILL.md`
+and the marketplace and plugin manifests, which the runner's escape detector
+caught; the source was restored before runs 2 and 3, so all three runs above
+measured the staged copy.
 
 Those confirming runs stand as the proof for the trigger-drift task, and no
 `description:` edit shipped: a rewrite was drafted, budget-checked, and reverted
 once the measurement showed the premise no longer holds. Because no description
-changed, `trigger_overlap.py` was not run and names no set to re-measure.
+changed, `trigger_overlap.py` was not run.
 
 The 2026-11-09 Cursor runs used the scratch-home route above, with the baseline
 run staging the parent commit's `SKILL.md` and the changed run staging the

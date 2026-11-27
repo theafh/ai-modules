@@ -18,7 +18,7 @@ A prompt that asks for a serial two-agent loop — implement, then have a second
 - The skill's `description:` enumerates fan-out over files, parallel helpers, lens panels, judge panels, verifier passes, and cross-checks. It has no phrase for the serial implement/audit loop, even though its own selector table names "Implement one task, a tracked item with its own acceptance list, spanning many files" and the `multi-file-task.md` recipe.
 - `<invocation_boundary>` routes "a request naming the task backlog or the wiki without naming this skill" to that family. `task_implement` and `task_audit` own no agent loop, so a prompt whose first token is a `tasks/….md` path reads as a backlog request and the delegation discipline falls through the gap.
 - Observed: eleven sessions carrying the verbatim ask "implement and audit run in sub-agents until one audit stamps the task as audited" never loaded the skill; several loaded `git_auto_review` later, for the review phase only. Separately, 13 of 16 sessions using an identical pasted multi-agent sweep prompt bypassed the skill, because the prompt itself supplied the discipline.
-- The existing [trigger-drift task](archive/ai-dev_agent-spinner-trigger-drift.md) measures two specific Cursor queries and owns the description-budget work for them. This task owns the serial-loop phrase and the routing boundary; land the two without editing the same description span twice.
+- The [trigger-drift task](archive/ai-dev_agent-spinner-trigger-drift.md) measured two specific Cursor queries and closed with no description edit, because the confirming runs passed. This task owns the serial-loop phrase and the routing boundary, and the description edit and its budget headroom are its alone.
 
 ## Approach
 
