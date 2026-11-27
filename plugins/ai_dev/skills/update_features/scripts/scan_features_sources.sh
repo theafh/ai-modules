@@ -9,9 +9,10 @@
 # layout. The ledger author reads that file, then reads the code it names.
 #
 # The scan is read-only and repository-agnostic: it needs no task system, no
-# network, and no build. Inside a git work tree it enumerates tracked files
-# with `git ls-files`, so ignored run output and dependency trees stay out of
-# the scan; elsewhere it falls back to `find`. Every section is sorted, so two
+# network, and no build. When the root lies inside a git work tree, a
+# subdirectory root included, it enumerates that root's tracked files with
+# `git ls-files`, so ignored run output and dependency trees stay out of the
+# scan; elsewhere it falls back to `find`. Every section is sorted, so two
 # runs over an unchanged tree produce byte-identical output.
 #
 # Usage:
@@ -47,16 +48,15 @@ fi
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/features-scan.XXXXXX") || exit 1
 trap 'rm -rf "$TMP"' EXIT
 
-# One sorted repo-relative file list, the single enumeration every section reads.
+# One sorted root-relative file list, the single enumeration every section reads.
 TOPLEVEL=$(git -C "$ROOT" rev-parse --show-toplevel 2>/dev/null || true)
-if [[ -n "$TOPLEVEL" && "$TOPLEVEL" == "$ROOT" ]]; then
+if [[ -n "$TOPLEVEL" ]]; then
     ( cd "$ROOT" && git ls-files ) > "$TMP/files"
 else
     ( cd "$ROOT" && find . -type f -print ) | sed 's#^\./##' | sort > "$TMP/files"
 fi
 
 section() { printf '\n## %s\n' "$1"; }
-list_or_none() { if [[ -s "$1" ]]; then cat "$1"; else echo "(none)"; fi; }
 
 {
     printf '# Behaviour-surface scan\n'
@@ -114,6 +114,6 @@ PY
     section "Test layout"
     grep -E '(^|/)(test|tests|spec|__tests__)/' "$TMP/files" \
         | sed -E 's#((^|/)(test|tests|spec|__tests__)/).*#\1#' | sort -u | head -40 || true
-} > "$OUT"
+} > "$OUT" || { echo "scan_features_sources.sh: cannot write $OUT" >&2; exit 1; }
 
 printf '%s\n' "$OUT"

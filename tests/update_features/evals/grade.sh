@@ -113,6 +113,12 @@ grade_eval_2() {
         bad "the greeting entry is unchanged"
     fi
 
+    if has_section "$FEATURES" "Not yet implemented"; then
+        ok "carries a '## Not yet implemented' section"
+    else
+        bad "carries a '## Not yet implemented' section"
+    fi
+
     local boundary capability
     boundary=$(section_body "$FEATURES" "Not yet implemented")
     capability=$(python3 - "$FEATURES" <<'PY'

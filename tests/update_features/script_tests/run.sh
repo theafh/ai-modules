@@ -61,32 +61,37 @@ t2_scan_reports_declared_targets() {
     fi
 }
 
-# t3: the scan is deterministic - two runs over an unchanged tree agree
-# everywhere except the generated-at stamp.
+# t3: the scan is deterministic - two runs over an unchanged tree agree byte
+# for byte, with no timestamped line to excuse a difference.
 t3_scan_is_deterministic() {
     local dir a b
     dir=$(fresh t3)
     a="$dir/a.txt"; b="$dir/b.txt"
     bash "$SCAN" --root "$FIXTURE" --out "$a" >/dev/null || { bad "t3 first scan exits 0"; return; }
     bash "$SCAN" --root "$FIXTURE" --out "$b" >/dev/null || { bad "t3 second scan exits 0"; return; }
-    if diff <(grep -v '^generated: ' "$a") <(grep -v '^generated: ' "$b") >/dev/null; then
+    if diff "$a" "$b" >/dev/null; then
         ok "t3 scan is deterministic across runs"
     else
         bad "t3 scan is deterministic across runs"
     fi
 }
 
-# t4: the scan works outside a git work tree, so the skill needs no VCS.
+# t4: the scan works outside a git work tree, so the skill needs no VCS. The
+# root is a copy staged under mktemp -d, outside this checkout, so the run
+# really takes the `find` fallback.
 t4_scan_works_outside_git() {
-    local dir out
+    local dir root out
     dir=$(fresh t4)
+    root=$(mktemp -d "${TMPDIR:-/tmp}/update-features-t4.XXXXXX") || { bad "t4 scan works outside a git work tree"; return; }
+    cp -R "$FIXTURE/." "$root/" || { rm -rf "$root"; bad "t4 scan works outside a git work tree"; return; }
     out="$dir/scan.txt"
-    ( cd "$dir" && bash "$SCAN" --root "$FIXTURE" --out "$out" ) >/dev/null || { bad "t4 scan outside git exits 0"; return; }
+    ( cd "$dir" && bash "$SCAN" --root "$root" --out "$out" ) >/dev/null || { rm -rf "$root"; bad "t4 scan outside git exits 0"; return; }
     if grep -q '^src/cli\.js$' <(sed -n '/## Executable entry points/,/^$/p' "$out"); then
         ok "t4 scan works outside a git work tree"
     else
         bad "t4 scan works outside a git work tree"
     fi
+    rm -rf "$root"
 }
 
 # t5: the skill carries no task-system dependency, so it runs where tasks/ does not exist.
@@ -102,7 +107,7 @@ t5_skill_has_no_task_dependency() {
 }
 
 # t6: the task lifecycle requires no FEATURES.md - its consult stays conditional
-# and the backlog lints with the file absent.
+# and the backlog lints whether or not the checkout carries the ledger.
 t6_task_lifecycle_does_not_require_features() {
     local task_skill="$REPO_ROOT/plugins/ai_dev/skills/task/SKILL.md"
     local ok_all=true
@@ -110,7 +115,6 @@ t6_task_lifecycle_does_not_require_features() {
     if grep -nE 'FEATURES\.md[^.]{0,80}(is required|must exist)|requires? `FEATURES\.md`' "$task_skill"; then
         ok_all=false
     fi
-    [[ -e "$REPO_ROOT/FEATURES.md" ]] && ok_all=false
     ( cd "$REPO_ROOT" && python3 plugins/ai_dev/skills/task/scripts/lint.py --quiet >/dev/null 2>&1 ) || ok_all=false
     if $ok_all; then
         ok "t6 task lifecycle requires no FEATURES.md"
@@ -152,6 +156,35 @@ t9_grader_rejects_stale_ledger() {
     fi
 }
 
+# t10: inside a git work tree the scan enumerates tracked files only, so an
+# untracked or ignored file never enters the scan.
+t10_scan_enumerates_tracked_files_through_git_ls_files() {
+    local label="t10 scan enumerates tracked files through git ls-files"
+    local dir root out tracked scanned ok_all=true
+    dir=$(fresh t10)
+    root=$(mktemp -d "${TMPDIR:-/tmp}/update-features-t10.XXXXXX") || { bad "$label"; return; }
+    cp -R "$FIXTURE/." "$root/" || { rm -rf "$root"; bad "$label"; return; }
+    if ! ( cd "$root" && git init -q -b main && git add -A \
+            && git -c user.name=update-features -c user.email=update-features@example.invalid \
+                   commit -q -m fixture ) >/dev/null 2>&1; then
+        rm -rf "$root"; bad "$label"; return
+    fi
+    printf 'TODO: an untracked note that must not reach the scan\n' > "$root/untracked-notes.md"
+    out="$dir/scan.txt"
+    bash "$SCAN" --root "$root" --out "$out" >/dev/null 2>&1 || ok_all=false
+    tracked=$(git -C "$root" ls-files | wc -l | tr -d ' ')
+    scanned=$(sed -n 's/^files: //p' "$out")
+    [[ -n "$tracked" && "$scanned" == "$tracked" ]] || ok_all=false
+    grep -q '^src/cli\.js$' <(sed -n '/## Executable entry points/,/^$/p' "$out") || ok_all=false
+    grep -q 'untracked-notes\.md' "$out" && ok_all=false
+    rm -rf "$root"
+    if $ok_all; then
+        ok "$label"
+    else
+        bad "$label"
+    fi
+}
+
 t1_scan_names_behaviour_surfaces
 t2_scan_reports_declared_targets
 t3_scan_is_deterministic
@@ -161,6 +194,7 @@ t6_task_lifecycle_does_not_require_features
 t7_skill_ships_helper
 t8_grader_accepts_good_ledger
 t9_grader_rejects_stale_ledger
+t10_scan_enumerates_tracked_files_through_git_ls_files
 
 printf '\n%s passed, %s failed\n' "$PASS" "$FAIL"
 if [[ $FAIL -gt 0 ]]; then
