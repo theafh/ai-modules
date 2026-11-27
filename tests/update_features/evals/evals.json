@@ -1,0 +1,47 @@
+{
+  "skill_name": "update_features",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Build the FEATURES.md behaviour ledger for this repository. It has no task system, and none is needed.",
+      "expected_output": "A repository-root FEATURES.md that describes current behaviour grouped by capability area, with an explicit not-yet-implemented boundary. The one built capability is the greeting behaviour, and the declared `--shout` flag appears only in the boundary.",
+      "files": [
+        "evals/fixtures/ledger-fixture/README.md",
+        "evals/fixtures/ledger-fixture/package.json",
+        "evals/fixtures/ledger-fixture/src/cli.js",
+        "evals/fixtures/ledger-fixture/test/cli.test.js",
+        "evals/fixtures/ledger-fixture/docs/notes.md"
+      ],
+      "expectations": [
+        "A FEATURES.md file exists at the repository root.",
+        "The file opens with an H1 naming the project.",
+        "At least one capability section states the greeting behaviour in the present tense: a named user is greeted, and the default name is `world`.",
+        "The file carries a `## Not yet implemented` section.",
+        "The `--shout` flag appears only under the not-yet-implemented section, never as a current capability.",
+        "No bullet's subject is a file path or module name; `src/cli.js` and `package.json` appear only as evidence, if at all.",
+        "The ledger carries no task IDs, sprint state, or dated status.",
+        "The run reports the capability areas written and the evidence behind the boundary item."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Refresh the FEATURES.md behaviour ledger: the `--shout` flag has now been implemented in src/cli.js.",
+      "expected_output": "The refresh moves the `--shout` behaviour out of the boundary into the capability section, in place, and leaves the unaffected greeting entry byte-identical.",
+      "files": [
+        "evals/fixtures/ledger-fixture-refresh/README.md",
+        "evals/fixtures/ledger-fixture-refresh/package.json",
+        "evals/fixtures/ledger-fixture-refresh/src/cli.js",
+        "evals/fixtures/ledger-fixture-refresh/test/cli.test.js",
+        "evals/fixtures/ledger-fixture-refresh/docs/notes.md",
+        "evals/fixtures/ledger-fixture-refresh/FEATURES.md"
+      ],
+      "expectations": [
+        "The greeting capability entry is unchanged from the pre-run ledger.",
+        "A `--shout` capability entry appears in the capability section, describing the upper-cased greeting.",
+        "The not-yet-implemented section no longer lists the `--shout` flag.",
+        "No stale claim that the flag is unbuilt remains anywhere in the file.",
+        "The run reports which entries changed and which stayed byte-identical."
+      ]
+    }
+  ]
+}
