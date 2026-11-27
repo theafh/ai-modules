@@ -41,7 +41,7 @@ Two live tasks quote the old tag names and are co-edited by this one: `wiki_page
 
 - [wiki_sanctioned-template-deviations.md](wiki_sanctioned-template-deviations.md) was the heavier collision and has shipped, so it is no longer a live edit target.
 - [wiki_page-type-growth-and-anatomy.md](wiki_page-type-growth-and-anatomy.md) names the tag once, in the passage explaining that a declared growth pattern would otherwise survive on the tag's generic extends-the-canon fallback.
-- [wiki_log-session-entry-consolidation.md](../wiki_log-session-entry-consolidation.md) names the tag twice, in its propagation paragraph and in its schema-template step, both pointing at the classification rule the rename retargets.
+- [wiki_log-session-entry-consolidation.md](wiki_log-session-entry-consolidation.md) names the tag twice, in its propagation paragraph and in its schema-template step, both pointing at the classification rule the rename retargets.
 
 The rename sweeps both live tasks above; whichever lands second refreshes the names the first left behind, which is why the enumeration is a search rather than a fixed list.
 

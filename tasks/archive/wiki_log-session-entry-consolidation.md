@@ -2,8 +2,8 @@
 description: Settle and fold wiki log entries at commit, skip clean lint logs, keep session detail and redaction out, align import/wrapup to one entry, propagate via wiki_fix.
 scope: plugins/knowledge_management
 created: 2026-08-20T15:09:44Z
-updated: 2026-11-27T07:55:00Z
-status: implemented
+updated: 2026-11-27T08:20:00Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: true
@@ -30,7 +30,7 @@ The log rules live in these canonical surfaces under `plugins/knowledge_manageme
 - The `## Conventions` bullet in `skills/wiki/references/template_schema.md` led by `Append every operation that creates or updates wiki files` excepts `lint and audit runs` as process records.
 - `skills/wiki/SKILL.md` states the absolute form in the `<architecture>` diagram annotation `append-only in substance, rotated yearly`, in the paragraph led by `**The log is append-only in substance.**`, and in `<appending_to_log>`. That block opens with `**An entry records a change.**` and keeps `Lint and audit runs are the one exception`. The `<log_only_what_changed>` pitfall repeats the exception. `<inline_iteration_loop>` says `Append the outcome to` the log. The `<update_navigation>` line naming the `ingest | Source Title` heading, the `<query>` step led by `log entry when the query changed files`, and the `<archive>` step `Log the archive action.` each append one entry per operation.
 - The `## Iteration loop` section of `skills/wiki/references/lint_checks.md` also says `Append the outcome to` the log.
-- In `agents/auto_shaper_wiki.md`, `<append_audit_log_entry>` writes a zero-change `audit` entry whose `Audit baseline:` line the next audit reads to scope its page walk. That makes the audit exception load-bearing. No later run reads a clean lint entry. This task's change to that block composes with [the audit-baseline task](archive/wiki_audit-baseline-after-full-reads.md), which edits the same block's baseline paragraph; whichever lands second preserves the other's wording.
+- In `agents/auto_shaper_wiki.md`, `<append_audit_log_entry>` writes a zero-change `audit` entry whose `Audit baseline:` line the next audit reads to scope its page walk. That makes the audit exception load-bearing. No later run reads a clean lint entry. This task's change to that block composes with [the audit-baseline task](wiki_audit-baseline-after-full-reads.md), which edits the same block's baseline paragraph; whichever lands second preserves the other's wording.
 - `skills/wiki_import/SKILL.md` and `skills/wiki_wrapup/SKILL.md` are thin front ends over the hub. On approval each routes writes through the hub's matching flow, then appends its own specialized entry (`import | Source Title — N new, N extended, N contested` or `session-wrapup | N new, N extended, N contested`). That post-routing append is a second write beside whatever the hub's `<update_navigation>` ingest line already appended for the same batch.
 
 Nothing addresses session detail. `<capture_raw_source>` asks the sidecar of a local source to `note its locality in prose`. That note stays, because it describes the source and leaves the session out.
@@ -58,7 +58,7 @@ On 2026-10-04 the owner added the fourth rule: "no entry for refinements of unco
 - Rewriting settled entries in any existing wiki, which stays the owner's editorial call.
 - Keeping a later re-ingest from restoring text that a redaction removed from a sidecar with a `source_url`.
 - A behavioural eval proving an agent folds entries and skips clean lint runs. This task does not ship that eval; Layer 1 scaffold and Layer 2 `wiki_fix` propagation are the proof surfaces.
-- Page-convention and lint-sanction prose in page bodies, owned by [wiki_meta-prose-in-page-bodies.md](archive/wiki_meta-prose-in-page-bodies.md). That task has shipped its page-body rule to `SKILL.md`, the schema template's `## Conventions`, and the agent's `<remediate>`, so this task composes its rule beside the shipped one.
+- Page-convention and lint-sanction prose in page bodies, owned by [wiki_meta-prose-in-page-bodies.md](wiki_meta-prose-in-page-bodies.md). That task has shipped its page-body rule to `SKILL.md`, the schema template's `## Conventions`, and the agent's `<remediate>`, so this task composes its rule beside the shipped one.
 
 ## Acceptance
 

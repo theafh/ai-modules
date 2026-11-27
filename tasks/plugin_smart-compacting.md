@@ -2,7 +2,7 @@
 description: "Medium-priority OpenCode V2 plugin that keeps a rolling summary and substitutes a compacted request only when the gateway's cold-context limit would force compaction."
 scope: harness-plugins/opencode_v2
 created: 2026-11-11T19:24:51Z
-updated: 2026-11-26T14:57:37Z
+updated: 2026-11-27T08:22:00Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -49,7 +49,7 @@ The configured SeibertGPT gateway enforces cold-context limits that are independ
 
 A session that grows gradually may exceed 350,000 tokens in total while its cache stays warm. The plan window (350k, 500k, or 1M) is a separate cap and is not observable from this machine. The gateway also enforces a burst budget; its own `Burst Protection` text states **500,000 new tokens at once and 500,000 per minute**, which supersedes the 400,000/400,000 figure recorded in the earlier admission-control design.
 
-The gateway answers with prose, not with a documented code: `cold_request_too_large` appears in no captured response and in no `@opencode` package, and the 413/400 statuses were never observed. OpenCode classifies the rejection as a context overflow — `context_length_exceeded` is one of the codes its classifier accepts (`@opencode/ai/dist/provider-error.js:206`) — and its own log line, `provider rejected the request as too long; compacting`, is written at the first message of the step *after* the compaction, so the log classifies a trigger but does not time it. The plugin therefore targets the cold and context-overflow rejections by status and classification, and treats a burst rejection as a wait, not a compaction trigger.
+The gateway answers with prose, not with a documented code: `cold_request_too_large` appears in no captured response and in no `@opencode` package, and the 413/400 statuses were never observed. OpenCode classifies the rejection as a context overflow — `context_length_exceeded` is one of the codes its classifier accepts (the `context_length_exceeded` case in `@opencode/ai/dist/provider-error.js`) — and its own log line, `provider rejected the request as too long; compacting`, is written at the first message of the step *after* the compaction, so the log classifies a trigger but does not time it. The plugin therefore targets the cold and context-overflow rejections by status and classification, and treats a burst rejection as a wait, not a compaction trigger.
 
 ### What the native compaction already provides (OpenCode 2.4.2)
 
