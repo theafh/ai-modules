@@ -197,6 +197,12 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
 
         read_ok = micro_deploy.read_checks_passed(
             integrity, checkout_unread, harness_copy_unread)
+        if not read_ok:
+            reason = micro_deploy.read_checks_fail_message(
+                integrity, checkout_unread, harness_copy_unread,
+                vendor=resolved.vendor)
+            if reason:
+                print(f"  [eval-{eval_id}] {reason}", flush=True)
         passed = completed and grade_ok and judge_ok and read_ok
         verdict = {
             "eval_id": eval_id, "passed": passed, "worker_completed": completed,

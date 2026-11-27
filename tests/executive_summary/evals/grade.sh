@@ -54,7 +54,11 @@ for n, line in enumerate(open(sys.argv[1], encoding="utf-8"), 1):
 print("\n".join(bad))
 PY
 )"
-  if [[ -n "$markers" ]]; then
+  markers_rc=$?
+  if [[ "$markers_rc" -ne 0 ]]; then
+    printf '  FAIL  no bullet or numbered list markers (scan could not run)\n'
+    fail=1
+  elif [[ -n "$markers" ]]; then
     printf '  FAIL  no bullet or numbered list markers\n'
     printf '%s\n' "$markers" | head -5 | sed 's/^/        /'
     fail=1
@@ -71,7 +75,9 @@ ok = 0.08 <= ratio <= 0.17
 print(f"{delivered_words} {source_words} {ratio:.3f} {'ok' if ok else 'bad'}")
 PY
 )"
+  ratio_rc=$?
   read -r dwords swords ratio verdict <<<"$ratio_result"
+  [[ "$ratio_rc" -eq 0 ]] || verdict=bad
   check "word count $dwords is 8-17% of $swords (${ratio})" test "$verdict" = ok
 
   rating_result="$(python3 - "$summary" <<'PY'
@@ -83,6 +89,8 @@ ok = bool(re.search(r"(?<![0-9])(?:[1-9]|10)\s*/\s*10", tail)
 print("ok" if ok else "bad")
 PY
 )"
+  rating_rc=$?
+  [[ "$rating_rc" -eq 0 ]] || rating_result=bad
   check "ends with a 1-to-10 self-rating" test "$rating_result" = ok
 
   forbidden_hit=0

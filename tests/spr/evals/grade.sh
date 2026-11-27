@@ -104,6 +104,8 @@ ok = bool(re.fullmatch(r"(?i)(?:rating\s*[:=]?\s*)?(?:[1-9]|10)\.?", last))
 print("ok" if ok else "bad")
 PY
 )"
+  rating_rc=$?
+  [[ "$rating_rc" -eq 0 ]] || rating=bad
   check "ends with a 1-to-10 rating" test "$rating" = ok
 else
   printf '  FAIL  spr and source readable\n'
