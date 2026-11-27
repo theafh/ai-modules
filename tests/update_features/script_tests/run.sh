@@ -131,6 +131,27 @@ t7_skill_ships_helper() {
     fi
 }
 
+# t8: the eval grader passes a ledger that meets the expectations.
+t8_grader_accepts_good_ledger() {
+    local golden="$SCRIPT_DIR/../evals/fixtures/ledger-fixture/expected-FEATURES.md"
+    if bash "$SCRIPT_DIR/../evals/grade.sh" 1 "$golden" >/dev/null 2>&1; then
+        ok "t8 grader accepts a conforming ledger"
+    else
+        bad "t8 grader accepts a conforming ledger"
+    fi
+}
+
+# t9: the eval grader rejects a ledger that still carries the unbuilt target as
+# a capability, so a green grade means something.
+t9_grader_rejects_stale_ledger() {
+    local prev="$SCRIPT_DIR/../evals/fixtures/ledger-fixture-refresh/FEATURES.md"
+    if bash "$SCRIPT_DIR/../evals/grade.sh" 2 "$prev" "$prev" >/dev/null 2>&1; then
+        bad "t9 grader rejects a stale ledger"
+    else
+        ok "t9 grader rejects a stale ledger"
+    fi
+}
+
 t1_scan_names_behaviour_surfaces
 t2_scan_reports_declared_targets
 t3_scan_is_deterministic
@@ -138,6 +159,8 @@ t4_scan_works_outside_git
 t5_skill_has_no_task_dependency
 t6_task_lifecycle_does_not_require_features
 t7_skill_ships_helper
+t8_grader_accepts_good_ledger
+t9_grader_rejects_stale_ledger
 
 printf '\n%s passed, %s failed\n' "$PASS" "$FAIL"
 if [[ $FAIL -gt 0 ]]; then

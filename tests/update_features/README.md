@@ -13,6 +13,7 @@ tests/update_features/
 ├── script_tests/scratch/  # transient per-scenario sandboxes (gitignored)
 └── evals/
     ├── evals.json         # skill-creator-aligned behavioural evals
+    ├── grade.sh           # deterministic grader for a produced ledger
     └── fixtures/
         ├── ledger-fixture/          # one built capability and one declared target
         └── ledger-fixture-refresh/  # the same repo after the declared target shipped
@@ -25,9 +26,13 @@ tests/update_features/
   `scan_features_sources.sh` helper (surface enumeration, declared-target
   markers, determinism, non-git fallback) and the skill's independence: no
   `tasks/` dependency, and a task lifecycle that requires no `FEATURES.md`.
-- `evals/evals.json` carries the behavioural evals. They run out of band
-  through the skill-creator runner, because they grade an agent's composed
-  ledger rather than a script's output.
+- `evals/evals.json` carries the behavioural evals. They grade an agent's
+  composed ledger, so they run out of band; `evals/grade.sh <eval-id>
+  <FEATURES.md> [<pre-run FEATURES.md>]` is the deterministic grader for the
+  file those runs produce. `script_tests` exercises the grader in both
+  directions (t8 accepts a conforming ledger, t9 rejects a stale one).
+- `evals/fixtures/ledger-fixture/expected-FEATURES.md` is the recorded ledger a
+  conforming eval-1 run produces; `t8` grades it.
 
 ## Adding a scenario
 
