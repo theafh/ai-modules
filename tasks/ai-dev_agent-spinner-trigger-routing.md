@@ -2,7 +2,7 @@
 description: "Route the serial implement-then-audit delegation ask to agent_spinner and stop task_* routing from swallowing a task-path prompt that also asks for helpers."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-27T09:00:44Z
-updated: 2026-11-27T09:00:44Z
+updated: 2026-11-27T12:29:05Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -15,7 +15,7 @@ A prompt that asks for a serial two-agent loop — implement, then have a second
 
 ## Context
 
-- The skill's `description:` enumerates fan-out over files, parallel helpers, lens panels, judge panels, verifier passes, and cross-checks. It has no phrase for the serial implement/audit loop, even though its own selector table names "Implement one task, a tracked item with its own acceptance list, spanning many files" and the `multi-file-task.md` recipe.
+- The skill's `description:` enumerates fan-out over files, parallel helpers, lens panels, judge panels, verifier passes, and cross-checks. It has no phrase for the serial implement/audit loop, even though its own selector table names "Implement one task, a tracked item with its own acceptance list, spanning many files" and the `multi-file-task.md` recipe. It measures 950 characters against `discovery_safety.py`'s 1,000-character risk threshold (`LISTING_BUDGET_RISK_CHARS = 8000 // 8`), so a new clause replaces an existing phrase rather than appending.
 - `<invocation_boundary>` routes "a request naming the task backlog or the wiki without naming this skill" to that family. `task_implement` and `task_audit` own no agent loop, so a prompt whose first token is a `tasks/….md` path reads as a backlog request and the delegation discipline falls through the gap.
 - Observed: eleven sessions carrying the verbatim ask "implement and audit run in sub-agents until one audit stamps the task as audited" never loaded the skill; several loaded `git_auto_review` later, for the review phase only. Separately, 13 of 16 sessions using an identical pasted multi-agent sweep prompt bypassed the skill, because the prompt itself supplied the discipline.
 - The [trigger-drift task](archive/ai-dev_agent-spinner-trigger-drift.md) measured two specific Cursor queries and closed with no description edit, because the confirming runs passed. This task owns the serial-loop phrase and the routing boundary, and the description edit and its budget headroom are its alone.

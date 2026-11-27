@@ -2,7 +2,7 @@
 description: "Stop the agent_spinner ledger from turning gitignored residue into per-file check rows, so a run over a repository with large ignored trees stays small and usable."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-27T09:00:44Z
-updated: 2026-11-27T09:00:44Z
+updated: 2026-11-27T12:29:05Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -11,7 +11,7 @@ reported-by: Andreas Hoffmann
 
 ## Goal
 
-A run opened over a repository with a large gitignored tree stays usable. `diff --add-checks` records new ignored residue in one aggregate record, or excludes it, instead of creating one `check:` row per ignored file, so the roster stays proportional to the artifacts the ask named and `status` stays readable.
+A run opened over a repository with a large gitignored tree stays usable. `diff --add-checks` records new ignored residue in one aggregate record instead of creating one `check:` row per ignored file, so the roster stays proportional to the artifacts the ask named and `status` stays readable.
 
 ## Context
 
@@ -22,7 +22,7 @@ A run opened over a repository with a large gitignored tree stays usable. `diff 
 
 ## Approach
 
-1. In `cmd_diff`, keep the `new-ignored-residue` flag for reporting, but stop emitting one change per ignored path. Emit one aggregate change whose path names the residue class (for example `ignored-residue`) and whose diff record carries the count and the paths, capped at a stated size.
+1. In `cmd_diff`, keep the `new-ignored-residue` flag for reporting, but stop emitting one change per ignored path. Emit one aggregate change whose path is the angle-bracket metadata form `<ignored-residue>`, like the existing `<HEAD>` and `<stash>` entries, and whose diff record carries the count and the paths, capped at a stated size. The angle-bracket path keeps the change out of condition 3's per-path check and out of the `--add-checks` loop while the diff record still reports it.
 2. In the `--add-checks` loop, create no `check:` row for the aggregate residue change. The residue stays visible through `diff` and the report, and it never becomes a dispatchable row.
 3. Keep the existing `under_run_dir` exclusion and the `git_ignored` selection unchanged, so a path the run itself writes is still ignored.
 4. Add one `ledger_run.sh` scenario that stages a repository with an ignored tree of many files, opens a run, changes one tracked artifact, and runs `diff --add-checks`. Assert that the roster holds no `check:` row for an ignored file, that the residue count appears in the diff record, and that `status` output stays bounded.

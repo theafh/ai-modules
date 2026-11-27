@@ -1,8 +1,8 @@
 ---
-description: "Replace slot-only queueing with cost-aware admission control: a new-context token budget, a context-in-flight cap with lanes, failure attribution and a self-recovering circuit breaker, a subagent gate, reload-safe lifecycle, and a validated in-window settings editor."
+description: "Replace slot-only queueing with cost-aware admission: token budget, in-flight caps with lanes, failure attribution, a circuit breaker, a subagent gate, reload-safe lifecycle, and a settings editor."
 scope: harness-plugins/opencode_v2/request-concurrency-queue
 created: 2026-11-20T13:05:00Z
-updated: 2026-11-20T21:50:46Z
+updated: 2026-11-27T12:29:05Z
 status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann

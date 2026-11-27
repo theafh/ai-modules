@@ -2,7 +2,7 @@
 description: "Trial the inline spin primary agent on three delegation jobs, then promote it into the ai_dev plugin as a primary agent if it holds the agent_spinner contract, or defer it with the failures recorded."
 scope: plugins/ai_dev
 created: 2026-11-27T09:00:44Z
-updated: 2026-11-27T09:00:44Z
+updated: 2026-11-27T12:29:05Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -20,12 +20,13 @@ The `spin` primary agent earns a place in the `ai_dev` plugin, or the trial reco
 - The user wants to try the agent before enforcing it with a prompt hook or moving it into the plugin. This task is the promotion decision after that trial, not the hook.
 - The plugin already ships agents under `plugins/ai_dev/agents/`; adding one follows the repo's versioning rules: the component ships at `1.0.0`, the carrying plugin advances its minor component, and both plugin manifests and both marketplace registrations move in lockstep.
 - The trial's proof surface is a tracked record, not a gitignored eval run. `tests/agent_spinner/RUNBOOK.md` already holds recorded measurements and is the natural home.
+- The trial measures the checker route, the follow-up contract, and the stopped-run close, so it runs after [the checker-role task](ai-dev_agent-spinner-checker-role-default.md), [the follow-up task](ai-dev_agent-spinner-followup-contract.md), and [the stopped-close task](ai-dev_agent-spinner-stopped-run-close.md) ship; a trial before them measures the defects those tasks fix.
 
 ## Approach
 
 1. Run the inline `spin` agent on three jobs: a per-artifact fan-out audit, a serial implement/audit loop over one task, and a read-only corpus sweep. For each, record whether it loaded `agent_spinner` before the first spawn, ran `init --probe`, wrote a phase plan, routed checks through `auto_checker_spinner`, and reached a clean `close`.
 2. Record the three runs in `tests/agent_spinner/RUNBOOK.md` under a `## Spin agent trial` heading: date, model, job, the five checks, and the outcome. Name each failure with the session id or the ledger state that shows it.
-3. When at least two of the three runs hold all five checks, add `plugins/ai_dev/agents/spin.md` with `mode: primary`, the system prompt from the trial copy, and the same permissions. Add the agent to `plugins/ai_dev/README.md`'s agent list, bump the plugin's minor version in both `plugin.json` files and both marketplace registrations, and ship the agent at `1.0.0`.
+3. When at least two of the three runs hold all five checks, add `plugins/ai_dev/agents/spin.md` with `mode: primary`, the system prompt from the trial copy, and the same permissions. Add the agent to `plugins/ai_dev/README.md`'s agent list, add it to `tests/deployment/script_tests/run.sh`'s deployed-agent assertions, bump the plugin's minor version in both `plugin.json` files and both marketplace registrations, and ship the agent at `1.0.0`.
 4. When fewer than two runs hold, leave the inline copy in place, record the failures, and hand the task to `task_finish` as `deferred` with the trial record as the reason. Do not add a prompt hook; the hook is a later decision.
 5. Run `make lint` after the edit and, when the plugin version moves, `make test` for the deterministic gate.
 
@@ -34,6 +35,5 @@ The `spin` primary agent earns a place in the `ai_dev` plugin, or the trial reco
 ## Acceptance
 
 - `tests/agent_spinner/RUNBOOK.md` carries a `## Spin agent trial` section with three runs, each naming the five checks and the outcome.
-- When promoted, `plugins/ai_dev/agents/spin.md` exists with `mode: primary`, the agent appears in `plugins/ai_dev/README.md`, both plugin manifests and both marketplace registrations carry the bumped version, and `make lint` passes.
+- When promoted, `plugins/ai_dev/agents/spin.md` exists with `mode: primary`, the agent appears in `plugins/ai_dev/README.md`, both plugin manifests and both marketplace registrations carry the bumped version, and `bash tests/deployment/script_tests/run.sh` passes with an assertion that the deployed `spin.md` copy carries `mode: primary`.
 - When deferred, the task is archived as `deferred` and the RUNBOOK section names the failing checks and the session or ledger evidence for each.
-- `make test` passes after the change.
