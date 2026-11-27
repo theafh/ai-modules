@@ -2,7 +2,7 @@
 description: "Build slop_catch in ai_editorial: a ported Python linter plus a structural-tell ruleset that list a draft's AI tells, score weighted density, and state the reduction target."
 scope: "ai_editorial plugin"
 created: 2026-06-01T21:31:06Z
-updated: 2026-11-27T14:05:00Z
+updated: 2026-11-27T14:30:00Z
 status: open
 reported-by: Andreas Hoffmann
 ---
@@ -46,97 +46,15 @@ The skill delivers that through two detection layers that stay distinct end to e
 
 ### Source inventory — exact patterns
 
-**Provenance.** The source is the `ai_slop_detector` Chrome extension at commit `df0332d`, read from `content.js` (its detection tables, the section the port transcribes verbatim below), `notes/slop_vocab.md` (the human-readable term list), and `notes/ChatGPT-Watermark Detection Techniques.md` (the character-level research). `content.js` is the executable source of truth: every one of the 141 lines in `notes/slop_vocab.md` is matched by a source regex, while the table encodes `scaffold` and `supercharge` as stems rather than enumerating their forms. The table, not the prose list, is the contract. Every regex below is transcribed verbatim from the source, including its duplicated characters, missing variants, and inconsistent quantifiers. Treat the transcription as the fidelity contract: the port reproduces each expression's matching behaviour, and the only permitted changes are the JS-to-Python translations listed under **Translation rules**.
+**Provenance.** The source is the `ai_slop_detector` Chrome extension at commit `df0332d`, read from `content.js` (its detection tables, the source the sourcing rule below sends the implementer to), `notes/slop_vocab.md` (the human-readable term list), and `notes/ChatGPT-Watermark Detection Techniques.md` (the character-level research). `content.js` is the executable source of truth: every one of the 141 lines in `notes/slop_vocab.md` is matched by a source regex, while the table encodes `scaffold` and `supercharge` as stems rather than enumerating their forms. The table, not the prose list, is the contract. Every regex is transcribed verbatim from the source, including its duplicated characters, missing variants, and inconsistent quantifiers. Treat the transcription as the fidelity contract: the port reproduces each expression's matching behaviour, and the only permitted changes are the JS-to-Python translations listed under **Translation rules**.
 
-**Single-word vocabulary patterns (35).** Each line gives the port's stable tell id, then the source regex literal. The source's array order carries no meaning; the id is a stable slug so a report does not shift when the table is edited.
+**Sourcing rule for the exact patterns.** Read them from the source at implementation time rather than from a copy here. The source is the `ai_slop_detector` repository at commit `df0332d`; `content.js` holds three tables, and every regex the port carries is transcribed from them verbatim:
 
-```text
-crucial        /\b(?:crucial|crucially)\b/gi
-consequently   /\b(?:consequently|consequential|consequentially)\b/gi
-cadence        /\bcadence\b/gi
-delve          /\b(?:delve|delves|delving)\b/gi
-elucidate      /\b(?:elucidate|elucidates|elucidated|elucidating|elucidation)\b/gi
-elevate        /\b(?:elevate|elevates|elevating)\b/gi
-embrace        /\b(?:embrace|embraces|embraced|embracing)\b/gi
-scaffold       /\bscaffold(?:ed|s|ing)?\b/gi
-intricate      /\b(?:intricate|intricately|intricacies)\b/gi
-indispensable  /\b(?:indispensable|indispensably)\b/gi
-seamless       /\b(?:seamless|seamlessly|seamlessness)\b/gi
-holistic       /\b(?:holistic|holistically)\b/gi
-myriad         /\b(?:myriad|myriads)\b/gi
-foster         /\b(?:foster|fostering|fosters|fostered)\b/gi
-facilitate     /\b(?:facilitate|facilitates|facilitated|facilitating|facilitation)\b/gi
-plethora       /\bplethora\b/gi
-realm          /\brealm\b/gi
-revolutionize  /\b(?:revolutionize|revolutionizes|revolutionized|revolutionizing)\b/gi
-embark         /\b(?:embark|embarks|embarked|embarking)\b/gi
-epistemic      /\b(?:epistemic|epistemically|epistemological|epistemology|epistemologists|epistemologist)\b/gi
-tapestry       /\b(?:tapestry|tapestries)\b/gi
-pivot          /\b(?:pivot|pivots|pivoted|pivoting|pivotal|pivotally)\b/gi
-streamline     /\b(?:streamline|streamlines|streamlined|streamlining)\b/gi
-subsequently   /\bsubsequently\b/gi
-unwavering     /\b(?:unwavering|unwaveringly)\b/gi
-unleash        /\b(?:unleash|unleashes|unleashed|unleashing)\b/gi
-ephemeral      /\b(?:ephemeral|ephemerally|ephemerality)\b/gi
-forefront      /\bforefront\b/gi
-harness        /\b(?:harness|harnessed|harnessing|harnesses)\b/gi
-leverage       /\b(?:leverage|leveraged|leveraging|leverages)\b/gi
-nuanced        /\bnuanced\b/gi
-supercharge    /\bsupercharg(?:e|ed|ing|es)\b/gi
-underpin       /\b(?:underpinning|underpin|underpins|underpinned)\b/gi
-unlock         /\b(?:unlock|unlocks|unlocked|unlocking)\b/gi
-unprecedented  /\b(?:unprecedented|unprecedently|unprecedentedly)\b/gi
-```
+- `SLOP_TERMS` in `content.js`, the vocabulary and phrase entries together, each with its source regex literal, its flags, and any replacement data the table already carries.
+- The format-pattern table that follows `SLOP_TERMS` in the same file, covering the eight formatting classes.
+- `notes/slop_vocab.md`, the human-readable term list the tables encode, which the port uses to cross-check that no term was dropped.
 
-**Multi-word phrase patterns (32).** Same format. `\s+` between tokens is the source's tolerance for ordinary whitespace; `[\s,;]+` additionally tolerates commas and semicolons; `*` allows zero characters where the source chose it.
-
-```text
-important-to-note           /\bit\s+is\s+important\s+to\s+note\s+that\b/gi
-numerous-challenges         /\bfaces\s+numerous\s+challenges\b/gi
-serves-as-powerful          /\bserves\s+as\s+a\s+powerful\b/gi
-valuable-insights           /\bproviding\s+valuable\s+insights\s+into\b/gi
-one-might-argue-that        /\bone\s+might\s+argue\s+that\b/gi
-should-be-mentioned         /\bit\s+should\s+be\s+mentioned\s+that\b/gi
-fast-paced-world            /\bin\s+today[''\u2019\u2018]?s\s+fast[\s\u002D\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFE63\uFF0D]*paced\s+world\b/gi
-as-an-ai-language-model     /\bas\s+an\s+ai\s+language\s+model\b/gi
-no-personal-data            /\bi\s+do\s+not\s+have\s+personal\s+data\b/gi
-unfortunately-not-enough    /\bunfortunately[\s,;]*i\s+do\s+not\s+have\s+enough\b/gi
-sorry-not-able              /\bi[''\u2019\u2018]?m\s+sorry[\s,;]*but\s+i[''\u2019\u2018]?m\s+not\s+able\s+to\b/gi
-might-be-the-case           /\bit\s+might\s+be\s+the\s+case\b/gi
-one-could-argue             /\bone\s+could\s+argue\b/gi
-plays-crucial-role          /\bplays\s+a\s+crucial\s+role\b/gi
-navigate-landscape          /\bnavigate\s+the\s+landscape\b/gi
-navigating-challenges       /\bnavigating\s+the\s+challenges\b/gi
-worth-noting                /\bit\s+is\s+worth\s+noting\b/gi
-plays-significant-role      /\bplays\s+a\s+significant\s+role\b/gi
-serves-critical-role        /\bserves\s+a\s+critical\s+role\b/gi
-some-might-argue            /\bsome\s+might\s+argue\b/gi
-stands-as-testament         /\bstands\s+as\s+a\s+testament\b/gi
-rapidly-evolving-world      /\bin\s+today[''\u2019\u2018]?s\s+rapidly\s+evolving\s+world\b/gi
-in-a-fast-paced-world       /\bin\s+a\s+fast[\s\u002D\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFE63\uFF0D]*paced\s+world\b/gi
-actionable-insights         /\bdelivering\s+actionable\s+insights\b/gi
-pave-the-way                /\bpave\s+the\s+way\s+for\b/gi
-lay-the-foundation          /\blay\s+the\s+foundation\s+for\b/gi
-ever-evolving               /\bever[\s\u002D\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFE63\uFF0D]*evolving\b/gi
-navigate-complexities       /\bnavigate\s+the\s+complexities\b/gi
-competitive-environment     /\bin[\s,;]+today[''\u2019\u2018]?s[\s,;]+competitive[\s,;]+business[\s,;]+environment\b/gi
-digital-landscape-evolves   /\bas[\s,;]+the[\s,;]+digital[\s,;]+landscape[\s,;]+continues[\s,;]+to[\s,;]+evolve\b/gi
-rise-of-ai                  /\bwith[\s,;]+the[\s,;]+rise[\s,;]+of[\s,;]+(?:(?:artificial[\s,;]+intelligence)|AI)\b/gi
-hope-this-finds-you-well    /\bi[\s,;]+hope[\s,;]+this[\s,;]+message[\s,;]+finds[\s,;]+you[\s,;]+well\b/gi
-```
-
-**The eight formatting classes, exact regex.** The source compiles these without the `i` flag; case is irrelevant to character classes.
-
-```text
-unusualDashes       /[\u2013\u2014\u2053\u301C]/g
-unusualQuotes       /[\u2018\u2019\u201C\u201D]/g
-unusualSpaces       /[\u2000-\u200A\u202F\u205F\u3000]/g
-specialDashes       /[\u2010\u2011\u2012\u2015]/g
-invisibleChars      /[\u200B-\u200D\uFEFF]/g
-suspiciousBackticks /`[^`\n]{15,}`/g
-exoticBackticks     /[\u02CB\u02C8\u2035\u2032\u2033\u2034]/g
-exoticPunctuation   /[\u2026\u2022\u2023\u2043\u204C\u204D]/g
-```
+The counts the Acceptance names (35 vocabulary entries, 32 phrase entries, 8 formatting classes) are what `content.js` at that commit contains; derive them from the file and assert them in the ported table rather than trusting this sentence. Where this task and `content.js` disagree, `content.js` at `df0332d` wins, and the divergence is recorded in the implementation report. Assign each entry a stable slug id so a report does not shift when the table is edited, and keep the source's array order out of the id scheme because it carries no meaning.
 
 **Source quirks to preserve, not repair.** Each of these is deliberate port content:
 

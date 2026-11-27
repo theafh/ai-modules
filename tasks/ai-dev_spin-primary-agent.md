@@ -15,7 +15,7 @@ The `spin` primary agent earns a place in the `ai_dev` plugin, or the trial reco
 
 ## Context
 
-- A trial copy of the agent lives in the global OpenCode agents directory. It is a `mode: primary` agent with a system prompt that requires `agent_spinner` before any delegation, a `subagent` allow rule, and `steps: 200`. It appears in the same agent picker as Build and Plan and is not the default.
+- A trial copy of the agent lives in the global OpenCode agents directory. It is a `mode: primary` agent with a system prompt that requires `agent_spinner` before any delegation, a `subagent` allow rule, and no step cap, matching Build and Plan. It appears in the same agent picker as Build and Plan and is not the default.
 - OpenCode treats Build and Plan as built-in primary agents, not as a hard-coded mode list. A custom primary agent is the supported extension point: `mode: primary`, an optional `system` prompt, `permissions`, and `steps`. The docs' Agents page and the config schema's `Config.AgentEncoded` define the shape.
 - The user wants to try the agent before enforcing it with a prompt hook or moving it into the plugin. This task is the promotion decision after that trial, not the hook.
 - The plugin already ships agents under `plugins/ai_dev/agents/`; adding one follows the repo's versioning rules: the component ships at `1.0.0`, the carrying plugin advances its minor component, and both plugin manifests and both marketplace registrations move in lockstep.
