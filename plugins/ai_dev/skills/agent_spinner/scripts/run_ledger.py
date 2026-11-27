@@ -2890,8 +2890,29 @@ def cmd_diff(args):
             p for p in read_text(led.path("baseline", "ignored")).splitlines() if p
         )
         current_ignored = set(p for p in git_ignored(led.root) if not under_run_dir(led.root, p))
-        for rel in sorted(current_ignored - baseline_ignored):
-            changes.append({"path": rel, "attribution": "orchestrator", "flags": ["new-ignored-residue"], "checks": [], "gate": ""})
+        new_ignored = sorted(current_ignored - baseline_ignored)
+        if new_ignored:
+            cap = 50
+            total = len(new_ignored)
+            listed = new_ignored[:cap]
+            trimmed = total - len(listed)
+            diff_text = (
+                "Payload cap: %d paths. Ignored paths total: %d; trimmed: %d.\n"
+                % (cap, total, trimmed)
+            ) + "".join(path + "\n" for path in listed)
+            dest = led.path("diffs", "ignored-residue.diff")
+            atomic_write(dest, diff_text)
+            changes.append(
+                {
+                    "path": "<ignored-residue>",
+                    "attribution": "orchestrator",
+                    "flags": ["new-ignored-residue"],
+                    "checks": [],
+                    "gate": "",
+                    "ignored_total": total,
+                    "diff": os.path.relpath(dest, led.root),
+                }
+            )
 
     led.run["changes"] = changes
 

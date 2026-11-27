@@ -487,7 +487,13 @@ Record what became of each record.
 
 Measure what changed against the baseline.
 
-- `--add-checks`: add a `check:<slug>` row per changed path.
+- `--add-checks`: add a `check:<slug>` row per changed path. New ignored
+  residue is the exception: it lands as one aggregate `<ignored-residue>`
+  change carrying the integer `ignored_total` and a capped
+  `diffs/ignored-residue.diff` that lists the first 50 paths, and it creates
+  no `check:` row, so the `new-ignored-residue` flag stays visible in the
+  diff record while a large ignored tree stays one record rather than one
+  dispatchable row per file.
 - `--approved-edits PATH`: map changed blocks to approved edits.
 - `--count`: print each counter's known-positive count, failing closed on a
   pattern that misses the positive and storing each counter it accepts with

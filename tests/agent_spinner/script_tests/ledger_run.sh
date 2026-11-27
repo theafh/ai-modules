@@ -889,6 +889,106 @@ scenario_diff() {
     if grep -q 'head-move' "$dir/diff-head.txt"; then ok "HEAD move caught"; else bad "HEAD move caught"; fi
 }
 
+scenario_ignored_residue() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit-path produce:a=a.txt >/dev/null 2>&1
+    mkdir -p "$dir/logs"
+    i=0
+    while [ "$i" -lt 1200 ]; do
+        printf 'residue\n' > "$dir/logs/r$i.log"
+        i=$((i + 1))
+    done
+    printf 'alpha\nbeta\ndelta\n' > "$dir/a.txt"
+    ledger "$dir" diff --add-checks > "$dir/diff.txt" 2>&1
+
+    if grep -q 'check:logs/' "$dir/.agent_spinner/roster.tsv"; then
+        bad "ignored residue creates no check row"
+    else
+        ok "ignored residue creates no check row"
+    fi
+
+    if "$PY" - "$dir/.agent_spinner/run.json" <<'PY'
+import json
+import sys
+
+data = json.load(open(sys.argv[1]))
+entries = [c for c in data.get("changes", []) if c.get("path") == "<ignored-residue>"]
+if len(entries) != 1:
+    raise SystemExit(1)
+entry = entries[0]
+if entry.get("ignored_total") != 1200:
+    raise SystemExit(1)
+if not entry.get("diff", "").endswith("diffs/ignored-residue.diff"):
+    raise SystemExit(1)
+PY
+    then
+        ok "the residue change carries the exact ignored total and the diff key"
+    else
+        bad "the residue change carries the exact ignored total and the diff key"
+    fi
+
+    residue_diff="$dir/.agent_spinner/diffs/ignored-residue.diff"
+    if grep -q 'Ignored paths total: 1200; trimmed: 1150' "$residue_diff"; then
+        ok "the residue diff cap line states the total and the trimmed count"
+    else
+        bad "the residue diff cap line states the total and the trimmed count"
+    fi
+    listed=$(grep -c '\.log$' "$residue_diff")
+    if [ "$listed" -eq 50 ]; then
+        ok "the residue diff lists exactly the first 50 paths"
+    else
+        bad "the residue diff lists exactly the first 50 paths"
+    fi
+
+    lines=$(ledger "$dir" status 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$lines" -lt 100 ]; then
+        ok "status stays bounded under a large ignored tree"
+    else
+        bad "status stays bounded under a large ignored tree"
+    fi
+
+    size=$(wc -c < "$dir/.agent_spinner/run.json" | tr -d ' ')
+    if [ "$size" -lt 1048576 ]; then
+        ok "run.json stays under 1 MB"
+    else
+        bad "run.json stays under 1 MB"
+    fi
+}
+
+scenario_ignored_residue_no_change() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit-path produce:a=a.txt >/dev/null 2>&1
+    mkdir -p "$dir/logs"
+    i=0
+    while [ "$i" -lt 200 ]; do
+        printf 'residue\n' > "$dir/logs/s$i.log"
+        i=$((i + 1))
+    done
+    ledger "$dir" diff --add-checks >/dev/null 2>&1
+
+    if "$PY" - "$dir/.agent_spinner/run.json" <<'PY'
+import json
+import sys
+
+data = json.load(open(sys.argv[1]))
+entries = [c for c in data.get("changes", []) if c.get("path") == "<ignored-residue>"]
+if len(entries) != 1 or entries[0].get("ignored_total") != 200:
+    raise SystemExit(1)
+PY
+    then
+        ok "a tree with only ignored residue still records the aggregate"
+    else
+        bad "a tree with only ignored residue still records the aggregate"
+    fi
+    if grep -q 'check:logs/' "$dir/.agent_spinner/roster.tsv"; then
+        bad "ignored-only residue adds no row"
+    else
+        ok "ignored-only residue adds no row"
+    fi
+}
+
 scenario_nonrepo_walk() {
     dir=$(mktemp -d "${TMPDIR:-/tmp}/ledger-nonrepo.XXXXXX")
     setup_plain "$dir"
@@ -4089,6 +4189,8 @@ run_all_scenarios() {
     scenario_rejection "$root/rejection"
     scenario_joins "$root/joins"
     scenario_diff "$root/diff"
+    scenario_ignored_residue "$root/ignored-residue"
+    scenario_ignored_residue_no_change "$root/ignored-residue-no-change"
     scenario_nonrepo_walk "$root/nonrepo"
     scenario_small_return "$root/small-return"
     scenario_approved_edits "$root/approved"

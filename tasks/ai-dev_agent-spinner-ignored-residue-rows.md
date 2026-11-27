@@ -2,9 +2,11 @@
 description: "Stop the agent_spinner ledger from turning gitignored residue into per-file check rows, so a run over a repository with large ignored trees stays small and usable."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-27T09:00:44Z
-updated: 2026-11-27T13:56:57Z
-status: ready
+updated: 2026-11-27T19:08:15Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: true
 ---
 
 # Keep gitignored residue out of the agent_spinner ledger's check rows
