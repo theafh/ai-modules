@@ -34,6 +34,16 @@ d="$(case_dir good)"
 printf -- '- first paragraph concept\n- second paragraph concept\n8\n' > "$d/spr.md"
 check "PASS: a compliant SPR passes" bash -c "\"$GRADE\" x \"$d\" \"$d/response.txt\" >/dev/null"
 
+# PASS: a labelled rating on the last line.
+d="$(case_dir labelled_rating)"
+printf -- '- first paragraph concept\n- second paragraph concept\nReconstructability: 9\n' > "$d/spr.md"
+check "PASS: a labelled final rating passes" bash -c "\"$GRADE\" x \"$d\" \"$d/response.txt\" >/dev/null"
+
+# FAIL: an N/10 form is not a single integer.
+d="$(case_dir slash_rating)"
+printf -- '- first paragraph concept\n- second paragraph concept\n9/10\n' > "$d/spr.md"
+check "FAIL: an N/10 form fails the single-integer rating" bash -c "! \"$GRADE\" x \"$d\" \"$d/response.txt\" >/dev/null"
+
 # FAIL: fewer bullets than paragraphs.
 d="$(case_dir coverage)"
 printf -- '- only one concept\n8\n' > "$d/spr.md"

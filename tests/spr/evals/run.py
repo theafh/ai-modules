@@ -19,7 +19,9 @@ Per eval the job:
    refute-biased `judge.py` for reconstructability and non-overlap.
 
 Exit code is 0 only when every eval's worker completed cleanly, its
-deterministic grade passed, and the judge passed both assertions.
+deterministic grade passed, the judge passed both assertions, and the three
+read checks passed (deployment provenance, checkout reads, harness-copy
+reads).
 
 Usage:
     python3 tests/spr/evals/run.py [eval_id ...]
