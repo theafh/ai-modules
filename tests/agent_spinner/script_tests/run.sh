@@ -77,6 +77,23 @@ heading_block() {
 
 heading_block_has_collapsed() { heading_block "$1" "$2" | collapsed_has "$3"; }
 
+# followup_contract <file> — one paragraph states that a follow-up resuming a
+# helper passes the host's required `agent`, `description`, and `prompt`, with
+# the helper's existing `sessionID` present as optional input.
+followup_contract() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+
+text = open(sys.argv[1]).read()
+for para in re.split(r"\n\s*\n", text):
+    flat = " ".join(para.split())
+    if all(word in flat for word in ("sessionID", "`agent`", "`description`", "`prompt`", "follow-up")):
+        raise SystemExit(0)
+raise SystemExit(1)
+PY
+}
+
 # checks_c2_block <checks.md> — the C2 section alone.
 checks_c2_block() {
   awk '
@@ -1255,6 +1272,40 @@ check "C2 item 2 gives the old-form test to rewrite items alone" \
   c2_rewrite_pairing "$CHECKS"
 check "the Checking pass template names what its checklist is built from" \
   heading_block_has_collapsed "$ROLE_PROMPTS" 'Checking pass' 'Where it names none, hold one line per claim the artifact makes, in artifact order'
+check "role-prompts.md states the orchestrator follow-up field contract" \
+  followup_contract "$ROLE_PROMPTS"
+check "run-protocol.md P4 states the helper follow-up field contract" \
+  followup_contract "$REFS/run-protocol.md"
+
+# Each check fails on a scratch copy with its paragraph removed.
+FU_SCRATCH="$SCRATCH/followup-contract"
+mkdir -p "$FU_SCRATCH"
+cp "$ROLE_PROMPTS" "$FU_SCRATCH/no-followup.md"
+python3 - "$FU_SCRATCH/no-followup.md" <<'PY'
+import re
+import sys
+path = sys.argv[1]
+text = open(path).read()
+text, n = re.subn(r"## Orchestrator follow-up\n.*?\n\n## Producing pass", "## Producing pass", text, count=1, flags=re.S)
+if n != 1:
+    raise SystemExit("follow-up section not found")
+open(path, "w").write(text)
+PY
+check "the follow-up check fails when role-prompts.md drops the section" \
+  not followup_contract "$FU_SCRATCH/no-followup.md"
+
+cp "$REFS/run-protocol.md" "$FU_SCRATCH/no-p4-followup.md"
+python3 - "$FU_SCRATCH/no-p4-followup.md" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+old = " Resuming a helper is a separate path from\nthat run re-entry: a follow-up call that passes the helper's existing\n`sessionID` still carries the host's required `agent`, `description`, and\n`prompt`, with the item restated in `prompt`."
+if old not in text:
+    raise SystemExit("P4 follow-up sentence not found")
+open(path, "w").write(text.replace(old, "", 1))
+PY
+check "the follow-up check fails when run-protocol.md drops the P4 sentence" \
+  not followup_contract "$FU_SCRATCH/no-p4-followup.md"
 
 # Each check fails on a scratch copy carrying the pre-change form, so a green
 # run proves it can fail rather than passing vacuously.

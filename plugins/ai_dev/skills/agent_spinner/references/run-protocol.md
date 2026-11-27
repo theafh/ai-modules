@@ -258,9 +258,12 @@ Create the stop file the moment a stop or pause request arrives. On a host with
 no later turn, a stop file planted before a wave pauses the run the same way.
 After a stop, abort, or resume, settle in-flight rows from the net diff before
 re-dispatch. Re-entry from a completion notice, a user message, or a fresh
-session runs `status`, then `attach`. A turn ends with the closing report or the
-interim report. A reply claiming nothing is left while rows or gates are open is
-a reporting error.
+session runs `status`, then `attach`. Resuming a helper is a separate path from
+that run re-entry: a follow-up call that passes the helper's existing
+`sessionID` still carries the host's required `agent`, `description`, and
+`prompt`, with the item restated in `prompt`. A turn ends with the closing
+report or the interim report. A reply claiming nothing is left while rows or
+gates are open is a reporting error.
 
 Where the session offers a goal tool, the continuation step arms one goal per
 run, with the run directory in its objective and the run's end as its

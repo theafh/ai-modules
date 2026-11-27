@@ -97,6 +97,17 @@ Delegate no part of your item; perform your own item.
 Bound: [the wall-clock bound in seconds].
 ```
 
+## Orchestrator follow-up
+
+A follow-up that resumes a running helper passes every field the host's spawn
+surface requires: `agent`, `description`, and `prompt`. A `sessionID` that
+resumes the helper is optional input, not a replacement for those fields; only
+`sessionID`, `model`, and `background` are optional on the call. Keep the
+helper's `agent`, send a fresh `description`, and restate the item in `prompt`
+so the child can act without the parent's context. This paragraph mirrors the
+host's spawn surface, not a rule of the run: delete it once the host accepts a
+`sessionID`-only follow-up.
+
 ## Producing pass
 
 ```text

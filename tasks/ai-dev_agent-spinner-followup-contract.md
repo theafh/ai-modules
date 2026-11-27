@@ -2,9 +2,11 @@
 description: "Record the subagent follow-up contract in agent_spinner's role prompts so a resumed helper still passes agent and description and stops losing calls to the missing-key error."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-27T09:00:44Z
-updated: 2026-11-27T13:52:50Z
-status: ready
+updated: 2026-11-27T18:00:28Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Record the subagent follow-up contract in agent_spinner
