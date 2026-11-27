@@ -100,7 +100,11 @@ PY
 import re, sys
 lines = [l.strip() for l in open(sys.argv[1], encoding="utf-8") if l.strip()]
 last = lines[-1] if lines else ""
-ok = bool(re.fullmatch(r"(?i)(?:rating\s*[:=]?\s*)?(?:[1-9]|10)\.?", last))
+text = "\n".join(lines)
+tail = text[-300:]
+label = r"(?:rating|reconstructability(?:\s+rating)?|score)"
+ok = bool(re.fullmatch(r"(?:[1-9]|10)\.?", last)) or bool(
+    re.search(rf"(?i)(?:\b(?:[1-9]|10)\s*(?:/|out of)\s*10\b|\b{label}\b\s*[:=]?\s*(?:[1-9]|10)\b)", tail))
 print("ok" if ok else "bad")
 PY
 )"

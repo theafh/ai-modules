@@ -8,7 +8,7 @@ TMPDIR). The default ids are every id in `evals.json`, in file order.
 Per eval the job:
 
 1. Stages a fresh sandbox via `stage.sh <id> <target>` and reads back
-   `sandbox_proj`, `skill_path`, and `prompt`.
+   `sandbox_proj` and `prompt`.
 2. Micro-deploys `executive_summary` into a scratch home outside the sandbox
    project and runs a vendor-resolved print-mode worker with the sandbox as its
    working directory, telling it to load the deployed SKILL.md, follow it, and
@@ -80,7 +80,7 @@ def stage(eval_id: str, target: pathlib.Path, env: Mapping[str, str]) -> dict:
     emit = (
         f'out="$({shlex.quote(str(STAGE))} {shlex.quote(eval_id)} '
         f'{shlex.quote(str(target))})" || exit $?; eval "$out"; '
-        'printf "%s\\0%s\\0%s\\0" "$sandbox_proj" "$skill_path" "$prompt"'
+        'printf "%s\\0%s\\0" "$sandbox_proj" "$prompt"'
     )
     result = subprocess.run(
         ["bash", "-c", emit], capture_output=True, text=True, env=dict(env)
@@ -90,10 +90,10 @@ def stage(eval_id: str, target: pathlib.Path, env: Mapping[str, str]) -> dict:
             f"stage.sh failed for eval {eval_id} (rc={result.returncode}): "
             f"{result.stderr.strip()}"
         )
-    sandbox_proj, skill_path, prompt, _ = result.stdout.split("\0")
+    sandbox_proj, prompt, _ = result.stdout.split("\0")
     if not sandbox_proj or not pathlib.Path(sandbox_proj).is_dir():
         raise RuntimeError(f"stage.sh staged no sandbox project for eval {eval_id}: {sandbox_proj!r}")
-    return {"sandbox_proj": sandbox_proj, "skill_path": skill_path, "prompt": prompt}
+    return {"sandbox_proj": sandbox_proj, "prompt": prompt}
 
 
 def worker_completed(rc: int, stdout: str) -> bool:
@@ -230,6 +230,7 @@ def run_one(eval_id: str, run_dir: pathlib.Path, resolved: vendor.Resolved,
         return passed
     finally:
         import shutil
+        worker_isolation.preserve_sandbox_copy(root, eval_dir / "sandbox")
         shutil.rmtree(root, ignore_errors=True)
 
 

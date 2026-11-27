@@ -8,7 +8,6 @@
 # printf %q so the lines are safe to `eval`:
 #
 #   sandbox_proj=<absolute path to the project holding source.md>
-#   skill_path=<absolute path to the executive_summary SKILL.md>
 #   prompt=<the user prompt to feed the agent>
 #
 # The staged project holds source.md (the document to summarize) and
@@ -23,8 +22,6 @@ mkdir -p "$target"
 target="$(cd "$target" && pwd)"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$HERE/../../.." && pwd)"
-SKILL_MD="$REPO_ROOT/plugins/knowledge_management/skills/executive_summary/SKILL.md"
 
 case "$eval_id" in
   policy_brief)
@@ -42,5 +39,4 @@ case "$eval_id" in
 esac
 
 printf 'sandbox_proj=%q\n' "$target/proj"
-printf 'skill_path=%q\n' "$SKILL_MD"
 printf 'prompt=%q\n' "$prompt"
