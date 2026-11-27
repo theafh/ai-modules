@@ -5443,6 +5443,78 @@ EOF
     $ok
 }
 
+# L130: a freshly scaffolded wiki carries the settled-entry log rules and the
+# session-detail rule verbatim. The log preamble must match the canonical
+# template byte for byte, so a scaffold that ships the old absolute append-only
+# wording fails here; SCHEMA.md must carry both new Conventions bullets.
+l130_scaffold_carries_log_and_session_rules() {
+    local wiki; wiki=$(stage_fresh_wiki l130)
+    local ok=true
+    if ! python3 - "$wiki/log.md" "$WIKI_SKILL/references/template_log.md" <<'PRELUDE'
+import pathlib
+import sys
+
+
+def prelude(path):
+    text = pathlib.Path(path).read_text()
+    cut = text.find("\n## [")
+    return text[:cut] if cut != -1 else text
+
+
+scaffold, template = prelude(sys.argv[1]), prelude(sys.argv[2])
+if scaffold != template:
+    print("    [scaffolded log preamble differs from the canonical template]",
+          file=sys.stderr)
+    raise SystemExit(1)
+PRELUDE
+    then
+        ok=false
+    fi
+    grep -qF '> Chronological record of wiki changes. Append-only for settled entries.' "$wiki/log.md" \
+        || { log "    [scaffold log opener does not scope append-only to settled entries]"; ok=false; }
+    grep -qF '> Entries: an entry settles at commit.' "$wiki/log.md" \
+        || { log "    [scaffold log preamble has no settled-entry rule]"; ok=false; }
+    grep -qF 'Redaction leaves no trace in the' "$wiki/log.md" \
+        || { log "    [scaffold log preamble has no redaction rule]"; ok=false; }
+    if ! python3 - "$wiki/SCHEMA.md" "$WIKI_SKILL/references/template_schema.md" <<'CONVENTIONS'
+import pathlib
+import sys
+
+OPEN = "- **Record an operation that creates or updates wiki files in `log.md`**"
+CLOSE = "- **Keep one owner per fact.**"
+
+
+def region(path):
+    text = pathlib.Path(path).read_text()
+    start = text.index(OPEN)
+    end = text.index(CLOSE)
+    return text[start:end]
+
+
+scaffold, template = region(sys.argv[1]), region(sys.argv[2])
+if scaffold != template:
+    print("    [scaffolded SCHEMA log/session bullets differ from the canonical template]",
+          file=sys.stderr)
+    raise SystemExit(1)
+CONVENTIONS
+    then
+        ok=false
+    fi
+    grep -qF -- '- **Record an operation that creates or updates wiki files in `log.md`**; a run' "$wiki/SCHEMA.md" \
+        || { log "    [scaffold SCHEMA has no settled-entry log bullet]"; ok=false; }
+    grep -qF -- '- **Session detail stays out of the wiki.**' "$wiki/SCHEMA.md" \
+        || { log "    [scaffold SCHEMA has no session-detail bullet]"; ok=false; }
+    grep -qF -- 'Redaction leaves no trace in the log' "$wiki/SCHEMA.md" \
+        || { log "    [scaffold SCHEMA session-detail bullet omits the redaction rule]"; ok=false; }
+    if grep -qF 'lint and audit runs' "$wiki/SCHEMA.md"; then
+        log "    [scaffold SCHEMA still excepts lint runs]"; ok=false
+    fi
+    if grep -qF 'Append every operation that creates' "$wiki/SCHEMA.md"; then
+        log "    [scaffold SCHEMA still carries the old absolute append rule]"; ok=false
+    fi
+    $ok
+}
+
 ###############################################################################
 # Run all scenarios
 ###############################################################################
@@ -5631,6 +5703,7 @@ scenario l126 "lint reads non-word info-string fences"         l126_lint_non_wor
 scenario l127 "fenced Lint-section bullet is documentation"    l127_lint_fenced_lint_section_bullet_is_documentation
 scenario l128 "fenced taxonomy block is documentation"         l128_lint_fenced_taxonomy_block_is_documentation
 scenario l129 "four-backtick link example is stripped"         l129_lint_four_backtick_link_example_is_stripped
+scenario l130 "scaffold ships settled-entry and session rules" l130_scaffold_carries_log_and_session_rules
 
 scenario a1  "auto_shaper fidelity-safe token-cost contract" a1_auto_shaper_fidelity_safe_token_cost_contract
 scenario a2  "wiki file-access guidance contract"          a2_wiki_file_access_contract
@@ -6491,7 +6564,7 @@ m2_refresh_drifted_labeled() {
     local ret; ret=$(run_merge "$log"); local rc=${ret%%|*} out=${ret#*|}
     local ok=true
     assert_eq "exit" "$rc" "0" || ok=false
-    grep -q '^> Entries: an operation that creates or updates wiki files appends one entry; an$' "$log" \
+    grep -qF '> Entries: an entry settles at commit.' "$log" \
         || { log "    [Entries not refreshed to template text]"; ok=false; }
     if grep -q '^> Entries: every operation that creates' "$log"; then
         log "    [stale Entries wording survives]"; ok=false
@@ -6508,7 +6581,7 @@ m3_refresh_drifted_unlabeled() {
     local ret; ret=$(run_merge "$log"); local rc=${ret%%|*}
     local ok=true
     assert_eq "exit" "$rc" "0" || ok=false
-    grep -q '^> Chronological record of wiki changes\. Append-only\.$' "$log" \
+    grep -qF '> Chronological record of wiki changes. Append-only for settled entries.' "$log" \
         || { log "    [unlabeled opener not refreshed]"; ok=false; }
     if grep -q '^> Chronological record of changes to this wiki\.$' "$log"; then
         log "    [stale unlabeled wording survives]"; ok=false
@@ -6964,7 +7037,7 @@ DRIFT
     local ok=true
     assert_eq "exit" "$rc" "0" || ok=false
     local count
-    count=$(grep -c '^> Entries: an operation that creates or updates wiki files appends one entry; an$' "$log" || true)
+    count=$(grep -cF '> Entries: an entry settles at commit.' "$log" || true)
     assert_eq "one current Entries block" "$count" "1" || ok=false
     if grep -q 'older sentence about how entries were once scoped' "$log"; then
         log "    [stale drifted Entries wording survives]"; ok=false
@@ -7029,13 +7102,24 @@ m19_mixed_drift_refused() {
     local home; home=$(fresh_scratch m19)
     local log="$home/log.md"
     cp "$TEMPLATE_LOG" "$log"
-    cat > "$home/drifted" <<'DRIFT'
-> Entries: each operation that writes wiki files records one entry; an
-> operation that changes no file appends none. Lint and audit runs are the
-> exception. Each records its outcome, including a zero-change one, as a
-> process record.
-> Owners keep this extra line about tenants.
-DRIFT
+    # Derive the fixture from the canonical Entries unit so it keeps reworking
+    # one canonical line and adding one owner line after a still-equal block,
+    # whatever the template text becomes. That shape is what makes the drift
+    # undecidable: the extra line could be owner content or stale wording.
+    python3 - "$TEMPLATE_LOG" "$home/drifted" <<'DRIFTPY'
+import pathlib
+import sys
+
+lines = pathlib.Path(sys.argv[1]).read_text().splitlines()
+start = next(n for n, ln in enumerate(lines) if ln.startswith("> Entries:"))
+end = next(n for n, ln in enumerate(lines) if ln.startswith("> Repair:"))
+unit = lines[start:end]
+if len(unit) < 11:
+    raise SystemExit(f"fixture needs an Entries unit of at least 11 lines, got {len(unit)}")
+unit[4] = "> whatever the owner decides into one merged paragraph instead."
+unit.insert(9, "> Owners keep this extra line about tenants.")
+pathlib.Path(sys.argv[2]).write_text("\n".join(unit) + "\n")
+DRIFTPY
     _replace_unit "$log" "> Entries:" "$home/drifted"
     cp "$log" "$log.before"
     local ret; ret=$(run_merge "$log"); local rc=${ret%%|*} out=${ret#*|}

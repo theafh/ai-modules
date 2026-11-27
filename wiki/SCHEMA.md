@@ -89,9 +89,23 @@ fixes a decision in time rather than reporting a state.
   Minimum 2 outbound links per page.
 - When updating a page, always bump the `updated` date
 - Every new page must be added to `index.md` under the correct section
-- Every operation that creates or updates wiki files must be appended to
-  `log.md`; an operation that changes no file writes no entry (lint and audit
-  runs excepted, because each records its outcome as a process record)
+- **Record an operation that creates or updates wiki files in `log.md`**; a run
+  that changes no file writes no entry, and a lint run is logged only when it
+  changed files. The audit run is the one zero-change exception, because its
+  entry carries the baseline the next audit scopes from. An entry settles at
+  commit: a later edit that corrects or refines the same uncommitted work folds
+  into the open entry instead of adding one of its own. The `Entries:` group in
+  `log.md`'s own preamble carries these rules at the point of use
+- **Session detail stays out of the wiki.** Pages, raw sidecars, and log entries
+  record what the wiki holds and what changed in it, never the session that
+  produced the change: who asked for what, drafts that were replaced, and
+  corrections made before the work was committed all stay out. A clarification
+  given in the same session lands in the text it clarifies.
+  **Redaction leaves no trace in the log**: removing or anonymizing content
+  writes no entry and appears in no entry, whether the redacted work is open or
+  settled, and a sidecar whose body an owner edited in place takes a hash
+  refresh with no entry. The `Body:` group in `log.md`'s own preamble carries
+  the log half at the point of use
 - **Provenance:** this is an LLM-first wiki, so attribution belongs *next to*
   the claim it attributes, not collected at the bottom of the page. The
   `sources:` frontmatter is the canonical list of every raw file the page

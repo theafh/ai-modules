@@ -1,7 +1,7 @@
 ---
 name: wiki_wrapup
 description: Wrap up the current chat session by mining it for durable knowledge, comparing the findings against the existing wiki, and surfacing both candidate additions and contradictions with concrete reconciliation suggestions. Use when the user asks to wrap up, close, or end a session; to capture, harvest, or persist what we discussed into the wiki; to ingest the session into the wiki; to reconcile the conversation with existing notes; or whenever a research or exploration chat is concluding and produced reusable knowledge worth keeping.
-version: 1.1.4
+version: 1.1.5
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -30,12 +30,12 @@ license: MIT
     <step>Walk the session top to bottom. Build a list of durable items, each with title, suggested page type, target slug, and source-message reference.</step>
     <step>Search `$WIKI` for each item. Tag NEW, EXTEND, CONFIRM, or CONFLICT. For CONFLICT items, capture both excerpts.</step>
     <step>Emit one report under three H2 headings: `## New pages`, `## Extensions to existing pages`, `## Contradictions to reconcile`.</step>
-    <step>On approval, route each item through the `wiki` skill's matching flow, run `python3 "$WIKI_SKILL/scripts/lint.py"`, and append a single `## [YYYY-MM-DD HH:MM] session-wrapup | N new, N extended, N contested` entry to `log.md` listing only files actually changed.</step>
+    <step>On approval, open this batch's work-unit entry in `log.md` before routing any approved write: `## [YYYY-MM-DD HH:MM] session-wrapup | N new, N extended, N contested`. Route each item through the `wiki` skill's matching flow, whose log writes fold into that open entry under the hub's `<appending_to_log>` rule, then run `python3 "$WIKI_SKILL/scripts/lint.py"` and finalize the same entry's counts and file list in place instead of appending a second one.</step>
   </steps>
   <output_contract>
     <proposal_format>Three H2 sections. Each entry: title, suggested type, target path, source-message reference. Contradictions also carry wiki excerpt, session excerpt, disagreement dimension, and ≥2 reconciliation options.</proposal_format>
     <no_writes_before_approval>Skip every wiki write during the proposal phase.</no_writes_before_approval>
-    <log_entry>One dated session-wrapup entry that lists only files actually created or updated.</log_entry>
+    <log_entry>One dated session-wrapup entry per approved batch, opened before hub routing and finalized in place after lint, that lists only files actually created or updated. The hub's writes fold into that open entry under its `<appending_to_log>` rule, so the batch never appends a second one.</log_entry>
     <validation>Every candidate carries type and target; every CONFLICT carries both excerpts and ≥2 reconciliation options; no wiki file is modified before approval; the log entry matches actual file changes.</validation>
   </output_contract>
 </wiki_wrapup>

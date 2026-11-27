@@ -1,7 +1,7 @@
 ---
 name: auto_shaper_wiki
 description: Audits the wiki of the current repository end-to-end, runs the linter, and autonomously fixes every issue found, including frontmatter and schema violations, broken links, off-taxonomy tags, oversized or topic-mixing pages that need splitting, procedure pages that leak instance content, procedure pages that read as descriptions of a mechanism rather than steps for an operator, clear content violations of the page-type anatomy, and contradictions between wiki pages (surfaced via the contested-page protocol rather than auto-resolved). Use when the user asks to audit, lint, fix, health-check, clean up, or auto-repair their wiki.
-version: 1.11.20
+version: 1.11.21
 model: inherit
 background: false
 effort: high
@@ -680,8 +680,8 @@ the fix move.
       diff -u "$WIKI/SCHEMA.md" "$WIKI_SKILL/references/template_schema.md"
       diff -u "$WIKI/index.md"  "$WIKI_SKILL/references/template_index.md"
       # log.md: scope the diff to the preamble (everything above the first
-      # `## [YYYY-MM-DD HH:MM]` entry). Entries below are append-only content
-      # that grows unbounded; a whole-file diff would drown the preamble
+      # `## [YYYY-MM-DD HH:MM]` entry). Entries below are append-only once
+      # settled and grow unbounded; a whole-file diff would drown the preamble
       # scaffold signal in hundreds of accumulated entries.
       diff -u \
         <(sed '/^## \[/,$d' "$WIKI/log.md") \
@@ -771,7 +771,7 @@ the fix move.
       - `template_log.md`: every `## [YYYY-MM-DD HH:MM] …` entry and
         its body, out of scope for the scaffold diff entirely, since
         the diff runs on the preamble alone and entries are
-        append-only content. One narrow exception lives on the
+        append-only once settled. One narrow exception lives on the
         remediate side: an operator who explicitly asks to clean
         duplicate headings routes that repair through
         `<fix_log_heading_duplicate>`, which touches nothing but a
@@ -1031,7 +1031,7 @@ affect the same file so each file is opened, read, and rewritten once.
     a body edit. A `heading-label` finding maps to `<fix_heading_label>`,
     whose H1 branch is review-only and whose length-only branch may stand
     as accepted info. The log
-    is append-only in substance (`<configurable_zones>`), and trimming
+    is append-only once an entry settles (`<configurable_zones>`), and trimming
     a historical entry whose subject was a file outside the wiki is an
     editorial decision the owner makes, not a sweep this agent
     performs. Where this agent *writes* a new entry
@@ -1349,12 +1349,19 @@ affect the same file so each file is opened, read, and rewritten once.
     </fix_confidence_violation>
 
     <fix_source_drift>
-      Re-read the raw file, compare against the wiki page's claims,
-      update the wiki page where the source has materially changed,
-      and recompute the sha256 in the raw file's frontmatter by running
-      `python3 "$WIKI_SKILL/scripts/compute_sha256.py" <raw-file>`.
-      Do not compute the hash inline or invent it. Do not edit the raw
-      body itself except to re-record what the source now says.
+      An audit re-reads the sidecar and never re-fetches the source, so a
+      body-hash mismatch is its only signal and it cannot tell an owner's
+      in-place edit, such as a redaction, from a source that changed. Send
+      that case to the write mode of `compute_sha256.py`
+      (`python3 "$WIKI_SKILL/scripts/compute_sha256.py" <raw-file>`), leave
+      the page and `log.md` untouched, and report the divergence to the user
+      only. Compute no hash inline and invent no value. A source that
+      materially changed reaches the wiki through the hub's **Re-ingest
+      compares before it writes** path in `<capture_raw_source>`, which
+      re-fetches the source and keeps its log entry.
+      `Redaction leaves no trace in the log.` in the hub's
+      `<session_detail_out_of_wiki>` block, inside `<operational_discipline>`,
+      owns the rule.
     </fix_source_drift>
 
     <fix_contested_page>
@@ -1552,7 +1559,7 @@ affect the same file so each file is opened, read, and rewritten once.
 
       Change nothing else. The entry body, the recorded substance, and
       the entry order all stay as they are, and no timestamp is
-      fabricated for a past entry whose real time is unknown.
+      fabricated for a settled entry whose real time is unknown.
     </fix_log_heading_duplicate>
 
     <fix_log_rotation>
@@ -1738,9 +1745,11 @@ affect the same file so each file is opened, read, and rewritten once.
     ## [YYYY-MM-DD HH:MM] audit | N blocking, N warn, N info; M pages updated, K pages split
     ```
 
-    List the files actually created, updated, or moved, and do not
-    narrate inspected-but-unchanged files; a clean audit instead
-    writes a zero-change outcome entry
+    List only the files whose content this audit changed, created, or moved,
+    and do not narrate inspected-but-unchanged files; a hash refresh the audit
+    performs appears in no entry, as `Redaction leaves no trace in the log.` in
+    the hub's `<session_detail_out_of_wiki>` block requires. A clean audit
+    instead writes a zero-change outcome entry
     (`0 blocking, 0 warn, 0 info; 0 pages updated, 0 pages split`)
     whose file list is empty and whose purpose is the baseline and
     cold-read metadata below, a sanctioned process record distinct

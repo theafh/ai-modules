@@ -33,14 +33,28 @@ rules below read in the vocabulary of the wiki they govern.
   outbound links.
 - **Bump the `updated` date** on every page you change.
 - **Add every new page to `index.md`** under the correct section.
-- **Append every operation that creates or updates wiki files to `log.md`**;
-  write no entry for an operation that changes no file (lint and audit runs
-  excepted, since each records its outcome as a process record). **An entry records
+- **Record an operation that creates or updates wiki files in `log.md`**; a run
+  that changes no file writes no entry, and a lint run is logged only when it
+  changed files. The audit run is the one zero-change exception, because its
+  entry carries the baseline the next audit scopes from. An entry settles at
+  commit: a later edit that corrects or refines the same uncommitted work folds
+  into the open entry instead of adding one of its own. The `Entries:` group in
+  `log.md`'s own preamble carries these rules at the point of use. **An entry records
   changes to this wiki, and only those**: its subject is a file under the wiki,
   a change elsewhere in the repository that holds the wiki goes in that change's
   own commit message, and a finding worth keeping goes onto the page that owns
   it so the entry names that page. The `Scope:` group in `log.md`'s own preamble
   carries this rule at the point of use.
+- **Session detail stays out of the wiki.** Pages, raw sidecars, and log entries
+  record what the wiki holds and what changed in it, never the session that
+  produced the change: who asked for what, drafts that were replaced, and
+  corrections made before the work was committed all stay out. A clarification
+  given in the same session lands in the text it clarifies.
+  **Redaction leaves no trace in the log**: removing or anonymizing content
+  writes no entry and appears in no entry, whether the redacted work is open or
+  settled, and a sidecar whose body an owner edited in place takes a hash
+  refresh with no entry. The `Body:` group in `log.md`'s own preamble carries
+  the log half at the point of use.
 - **Keep one owner per fact.** The page that owns the subject carries the
   perishable detail; a cross-cutting page carries the consequence and links to
   the owner rather than restating. Settle ownership by asking which page a

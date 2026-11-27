@@ -2888,7 +2888,7 @@
           "id": "A2_entries_group_refreshed_to_template_text",
           "type": "glob_file_contains",
           "pattern": "HOME/proj/wiki/log.md",
-          "regex": "(?m)^> Entries: an operation that creates or updates wiki files appends one entry; an$"
+          "regex": "(?m)^> Entries: an entry settles at commit\\."
         },
         {
           "id": "A3_stale_entries_wording_gone",
@@ -2970,7 +2970,7 @@
           "id": "A2_opener_refreshed_to_template_text",
           "type": "glob_file_contains",
           "pattern": "HOME/proj/wiki/log.md",
-          "regex": "(?m)^> Chronological record of wiki changes\\. Append-only\\.$"
+          "regex": "(?m)^> Chronological record of wiki changes\\. Append-only for settled entries\\.$"
         },
         {
           "id": "A3_stale_opener_wording_gone",
@@ -3825,6 +3825,104 @@
         {
           "id": "A11_real_home_wiki_absent",
           "type": "real_home_wiki_absent"
+        }
+      ]
+    },
+    {
+      "id": "AS-30",
+      "name": "auto-shaper-carries-settled-entry-and-session-rules-to-existing-wiki",
+      "description": "auto_shaper_wiki (via wiki_fix) propagates the settled-entry log rules and the session-detail rule to a wiki that predates them. The fixture carries the pre-change log preamble, the pre-change SCHEMA.md log bullet that excepts lint runs, and no session-detail bullet, with no `Declared boilerplate:` bullet covering the preamble. After the run the preamble must carry the settled-entry and redaction rules, SCHEMA.md must carry the session-detail bullet, and the lint exception must be either rewritten or named in the report as a contradiction for the owner. Graded out-of-band against the top-level passes denominator (wiki_log-session-entry-consolidation, Acceptance: the rules reach an existing wiki through wiki_fix).",
+      "skill_name": "wiki_fix",
+      "sandbox_path": "AS-30",
+      "fake_home_subpath": "HOME",
+      "cwd_subpath": "HOME/proj",
+      "user_request": "Audit my wiki end to end and fix every issue you can safely and deterministically fix; surface anything that needs my decision. The wiki is under this project directory.",
+      "extra_constraints": [
+        "Run the auto_shaper_wiki audit flow the wiki_fix skill fronts.",
+        "Restore any scaffold region the linter reports as drifted from its canonical template.",
+        "Leave the log entries below the preamble exactly as they are.",
+        "A SCHEMA.md bullet that contradicts the canonical conventions is surfaced for the owner's decision; a canonical bullet the wiki lacks is added."
+      ],
+      "expected_resolved_path_subpath": "HOME/proj/wiki",
+      "extra_report_fields": [
+        "log_preamble_restored: yes|no",
+        "log_lint_exception_disposition: rewritten|surfaced|unchanged",
+        "remediation_mechanism: script|hand-edit|none"
+      ],
+      "extra_report_field_doc": "- `log_preamble_restored`: `yes` if you changed the log.md preamble (the region above the first `##` heading) so it carries the canonical template text — inserting an absent canonical unit or refreshing a drifted one both count; `no` otherwise.\n- `log_lint_exception_disposition`: `rewritten` if you replaced the SCHEMA.md log bullet that excepts lint runs with the canonical wording; `surfaced` if you left it and named the contradiction in your report for the owner; `unchanged` if you neither rewrote it nor named it.\n- `remediation_mechanism`: `script` if you reconciled the log.md preamble by running the bundled `merge_log_preamble.py`; `hand-edit` if you edited the preamble lines yourself; `none` if you changed nothing.",
+      "assertions": [
+        {
+          "id": "A1_discovery_invoked",
+          "type": "report_field_eq",
+          "field": "discovery_invoked",
+          "expected": "yes"
+        },
+        {
+          "id": "A2_preamble_carries_settled_entry_rule",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^> Entries: an entry settles at commit\\."
+        },
+        {
+          "id": "A3_preamble_carries_redaction_rule",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "Redaction leaves no trace in the"
+        },
+        {
+          "id": "A4_stale_absolute_opener_gone",
+          "type": "glob_file_absent_content",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?m)^> Chronological record of wiki changes\\. Append-only\\.$"
+        },
+        {
+          "id": "A5_schema_carries_session_detail_bullet",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/SCHEMA.md",
+          "regex": "(?m)^- \\*\\*Session detail stays out of the wiki\\.\\*\\*"
+        },
+        {
+          "id": "A6_lint_exception_rewritten_or_surfaced",
+          "type": "report_field_in",
+          "field": "log_lint_exception_disposition",
+          "expected": [
+            "rewritten",
+            "surfaced"
+          ]
+        },
+        {
+          "id": "A7_preamble_restored_reported",
+          "type": "report_field_eq",
+          "field": "log_preamble_restored",
+          "expected": "yes"
+        },
+        {
+          "id": "A8_existing_entries_untouched",
+          "type": "glob_file_contains",
+          "pattern": "HOME/proj/wiki/log.md",
+          "regex": "(?ms)^## \\[2026-06-17\\] create \\| Wiki initialized$.*^## \\[2026-06-18\\] session-wrapup \\| 0 new, 2 extended, 0 contested$"
+        },
+        {
+          "id": "A80_lint_invoked",
+          "type": "report_field_eq",
+          "field": "linted",
+          "expected": "yes"
+        },
+        {
+          "id": "A90_no_leak_outside_sandbox",
+          "type": "no_files_outside_sandbox"
+        },
+        {
+          "id": "A91_real_home_wiki_absent",
+          "type": "real_home_wiki_absent"
+        },
+        {
+          "id": "A72_remediation_mechanism_script",
+          "type": "report_field_in",
+          "field": "remediation_mechanism",
+          "expected": [
+            "script"
+          ]
         }
       ]
     },

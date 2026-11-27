@@ -1858,8 +1858,9 @@ def check_log_heading_uniqueness(wiki: Path) -> list[Issue]:
     underneath it.
 
     Severity is info: a collision is surfaced for review and never blocks the
-    exit code, because repairing an entry already written is an
-    operator-requested move rather than something a routine audit sweeps.
+    exit code, because rewriting a settled entry is an operator-requested move
+    rather than something a routine audit sweeps, while an open entry is folded
+    or repaired in place.
     """
     log = wiki / "log.md"
     if not log.is_file():
@@ -2004,10 +2005,10 @@ def check_log_scope(wiki: Path) -> list[Issue]:
     path and a message embedding a volatile count, which keeps an acceptance off
     that count.
 
-    Severity is info by design. The log is append-only and no fix move clears a
-    historical violation, so a warn would strand the `auto_shaper_wiki` agent on
-    a bar it cannot reach; new entries stay correct because the rule binds the
-    authoring surface directly.
+    Severity is info by design. The log is append-only once entries settle and
+    no fix move clears a historical violation, so a warn would strand the
+    `auto_shaper_wiki` agent on a bar it cannot reach; new entries stay correct
+    because the rule binds the authoring surface directly.
     """
     log = wiki / "log.md"
     if not log.is_file():

@@ -1315,7 +1315,8 @@ stage_AS-11() {
 
 # Fail loudly when the canonical log template no longer carries a literal string
 # an evals.json assertion hardcodes. A co-editor rewording a shared preamble unit
-# would otherwise turn an AS-14..AS-18 assertion into a silent false failure.
+# would otherwise turn an AS-14..AS-18 or AS-30 assertion into a silent false
+# failure.
 # Args: <literal string>...
 _assert_template_log_contains() {
     local missing=false s
@@ -1326,7 +1327,7 @@ _assert_template_log_contains() {
         fi
     done
     if $missing; then
-        echo "       An evals.json assertion for AS-14..AS-18 hardcodes this text —" >&2
+        echo "       An evals.json assertion for AS-14..AS-18 or AS-30 hardcodes this text —" >&2
         echo "       update the fixture and the assertion together." >&2
         exit 3
     fi
@@ -1520,7 +1521,7 @@ stage_AS-17() {
     # graded; the owner insert-only line is an acknowledged locked-slot
     # extension with no live `boilerplate` warn.
     _assert_template_log_contains \
-        "> Entries: an operation that creates or updates wiki files appends one entry; an"
+        "> Entries: an entry settles at commit."
     local sb
     sb=$(reset_sandbox AS-17)
     stage "$sb/HOME/proj"
@@ -1546,7 +1547,7 @@ stage_AS-18() {
     # the owner insert-only line is an acknowledged locked-slot extension with
     # no live `boilerplate` warn.
     _assert_template_log_contains \
-        "> Chronological record of wiki changes. Append-only."
+        "> Chronological record of wiki changes. Append-only for settled entries."
     local sb
     sb=$(reset_sandbox AS-18)
     stage "$sb/HOME/proj"
@@ -2804,6 +2805,49 @@ PY
     _as_git_commit "$sb/HOME/proj" "staging commit"
 }
 
+stage_AS-30() {
+    # AS-30 (wiki_log-session-entry-consolidation, Acceptance: a wiki predating
+    # the rules reaches them through wiki_fix): the fixture log.md carries the
+    # pre-change preamble, SCHEMA.md carries the pre-change log bullet that
+    # excepts lint runs, and no session-detail bullet is present. No
+    # `Declared boilerplate:` bullet covers the preamble, so lint's boilerplate
+    # warn is real. After the run the preamble must carry the settled-entry and
+    # redaction rules, SCHEMA.md must carry the session-detail bullet, and the
+    # lint exception must either be rewritten or be named in the report as a
+    # contradiction for the owner — never silently left in place.
+    _assert_template_log_contains \
+        "> Entries: an entry settles at commit." \
+        "Redaction leaves no trace in the"
+    local sb
+    sb=$(reset_sandbox AS-30)
+    stage "$sb/HOME/proj"    git -C "$sb/HOME/proj" init -q
+    "$INIT" "$sb/HOME/proj/wiki" >/dev/null
+    local wiki="$sb/HOME/proj/wiki"
+    _stage_stale_log_preamble "$wiki" \
+        "## [2026-06-17] create | Wiki initialized|||- Domain: widget delivery" \
+        "## [2026-06-18] session-wrapup | 0 new, 2 extended, 0 contested|||- concepts/alpha.md: extended"
+    python3 - "$wiki/SCHEMA.md" <<'PY'
+import pathlib
+import sys
+
+schema = pathlib.Path(sys.argv[1])
+text = schema.read_text()
+start = text.index("- **Record an operation that creates or updates wiki files in `log.md`**")
+end = text.index("- **Keep one owner per fact.**")
+old = (
+    "- **Append every operation that creates or updates wiki files to `log.md`**;\n"
+    "  write no entry for an operation that changes no file (lint and audit runs\n"
+    "  excepted, since each records its outcome as a process record). **An entry records\n"
+    "  changes to this wiki, and only those**: its subject is a file under the wiki,\n"
+    "  a change elsewhere in the repository that holds the wiki goes in that change's\n"
+    "  own commit message, and a finding worth keeping goes onto the page that owns\n"
+    "  it so the entry names that page. The `Scope:` group in `log.md`'s own preamble\n"
+    "  carries this rule at the point of use.\n"
+)
+schema.write_text(text[:start] + old + text[end:])
+PY
+}
+
 stage_MP-1() {
     # MP-1 (wiki_meta-prose-in-page-bodies): oversized custom `todo` page that
     # trips the page-size info finding. After wiki_fix the page body must
@@ -2899,7 +2943,7 @@ idx.write_text(text if text.endswith("\n") else text + "\n")
 PY
 }
 
-ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 L2-10 WI-1 WI-2 WI-3 WI-4 WI-5 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-6 AS-7 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21 AS-22 AS-23 AS-24 AS-25 AS-26 AS-27 AS-28 AS-29 MP-1)
+ALL_SCENARIOS=(L2-1 L2-2 L2-3 L2-4 L2-5 L2-6 L2-7 L2-8 L2-9 L2-10 WI-1 WI-2 WI-3 WI-4 WI-5 WU-1 WU-2 WU-3 AS-1 AS-2 AS-3 AS-4 AS-5 AS-6 AS-7 AS-8 AS-9 AS-10 AS-11 AS-12 AS-13 AS-14 AS-15 AS-16 AS-17 AS-18 AS-19 AS-20 AS-21 AS-22 AS-23 AS-24 AS-25 AS-26 AS-27 AS-28 AS-29 AS-30 MP-1)
 
 if [[ $# -eq 0 ]]; then
     for sid in "${ALL_SCENARIOS[@]}"; do

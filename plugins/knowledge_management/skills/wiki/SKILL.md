@@ -1,7 +1,7 @@
 ---
 name: wiki
 description: Build and maintain a persistent, compounding knowledge base of interlinked plain markdown files. Use when the user asks to create, build, start, or initialize a wiki or knowledge base; add, create, or write wiki pages; query, compare, contrast, reference, or analyze an existing wiki to answer a research or domain question; archive or reorganize wiki pages.
-version: 1.24.27
+version: 1.24.28
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -50,7 +50,7 @@ Three layers carry the wiki:
 wiki/
 ├── SCHEMA.md           # Conventions, structure rules, domain config
 ├── index.md            # Sectioned content catalog with one-line summaries
-├── log.md              # Chronological action log (append-only in substance, rotated yearly)
+├── log.md              # Chronological action log (append-only once settled, rotated yearly)
 ├── raw/                # Layer 1: Immutable source material
 │   ├── articles/       # Externally-published articles, web clippings
 │   ├── papers/         # PDFs, arxiv papers
@@ -65,11 +65,13 @@ wiki/
 └── procedures/         # Layer 2: Procedure / workflow / how-to pages
 ```
 
-**The log is append-only in substance.** Never reword, reorder, or delete what
-a past entry records. An entry may still be edited to repair a structural or
-lint break it introduced, keeping what it records and where it sits. See
-`<appending_to_log>` for the rule, and `<lint_and_audit>` for the duplicate
-heading the linter surfaces.
+**The log is append-only once an entry settles.** An entry the last commit
+contains is settled, and its substance is protected: never reword, reorder, or
+delete what a settled entry records. An entry the working tree adds is open,
+and a later edit that corrects the same work folds into it. Either may still be
+edited to repair a structural or lint break it introduced, keeping what it
+records and where it sits. See `<appending_to_log>` for the rule, and
+`<lint_and_audit>` for the duplicate heading the linter surfaces.
 
 **Layer 1: Raw Sources.** Immutable. The agent reads but never modifies these.
 **Layer 2: The Wiki.** Agent-owned markdown files. Created, updated, and
@@ -561,7 +563,9 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
   repo-escaping path. A raw-sidecar `source_path:` resolves from the wiki root;
   open it with `Read` as `$WIKI/<source_path-value>`. A local file outside the
   repo takes no path:
-  excerpt it into the body and note its locality in prose. The
+  excerpt it into the body and note its locality in prose, and leave the session
+  that produced it out of the sidecar as `<session_detail_out_of_wiki>`
+  requires. The
   `### raw/ Frontmatter` contract in `references/template_schema.md` is the
   canonical statement of these field meanings and of how a mislabeled or legacy
   sidecar reconciles onto them. Follow it rather than restating it here.
@@ -579,12 +583,17 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
   `python3 "$WIKI_SKILL/scripts/compute_sha256.py" --check <temp-sidecar>` on
   that temporary file (report-only mode, it writes nothing) while the
   sidecar on disk stays as it is. `ok` and exit 0 mean the source is
-  unchanged: skip, leaving the sidecar untouched, with no body rewrite, no
-  hash refresh, and no `log.md` entry. `update` and exit 1 mean drift: rewrite
+  unchanged: leave the sidecar body alone, with no body rewrite and no `log.md`
+  entry. `update` and exit 1 mean the source now says something else: rewrite
   the sidecar body to what the source now says, refresh the recorded hash with
   the write-mode command above, and report the drift both to the user and in
   the ingest's `log.md` entry. Running the write mode over the sidecar itself
-  first erases the mismatch that decides this branch.
+  first erases the mismatch that decides this branch. A sidecar whose own body
+  no longer matches its recorded hash while the re-fetched source does — an
+  owner's in-place edit, such as a redaction — refreshes the hash with the
+  write-mode command, writes no entry, and reports the refresh to the user
+  only, as `Redaction leaves no trace in the log.` in
+  `<operational_discipline>` requires.
 - **Keep cross-references out of the raw body.** A relative `.md`
   link from one raw file to another is ingester synthesis, not source
   content (originals cite by URL, not by ingester-picked slugs).
@@ -663,6 +672,10 @@ difference between a growing wiki and a pile of duplicates.
 - **Provenance**: this is an LLM-first wiki, and the object being attributed picks the channel. A source the wiki captured under `raw/` is cited *next to* the claim it supports, through an inline standard-markdown link: `Transformers replaced RNNs by 2019 ([Vaswani 2017](../raw/papers/attention-is-all-you-need.md))`. A live in-repo document that **is** the subject of classification (a paper, spec, or codebase the wiki exists to explain) is cited the same way under a root the wiki declares with a `Declared source root:` bullet in `SCHEMA.md`'s `## Lint` section, and it carries no sha256 drift detection, so its coherence relies on a review rule the wiki states. Both objects are listed in the page-level `sources:` frontmatter, the canonical inventory the page draws on, present on a page citing either object, absent from a page citing neither, and validated path by path against disk. Every `sources:` value resolves from the wiki root, so open it with `Read` as `$WIKI/<sources-value>`; a declared-root value may resolve to a sibling of the wiki inside the same repository. Uncaptured lineage that is **not** the subject of classification takes the other channel, the `## Derived from` section in the next bullet. A non-canonical artifact that arrives mid-conversation and informs the page is captured through `<non_canonical_raw_artifact_ingestion>` before the page cites it, and that provenance stays out of the body prose. **No footnote markers** (`[^name]` / `[^name]: …`) and **no deprecated `## Sources` collection**: both split the claim from its evidence across the page, force the reader (human or LLM) to resolve markers separately, and duplicate what the frontmatter already encodes.
 - **External derivation**: when a page is distilled from material that is **not** itself the subject of classification (doctrine in another repo, a codebase, a notebook, a SKILL.md the page summarizes), that material stays where it lives, and the page records the lineage in an optional `## Derived from` body section near the bottom of the page (bulleted list of external paths, URLs, or descriptors with whatever standing commentary applies, e.g. "no parallel repo at the time of writing; re-anchor when one exists"). The renamed heading is deliberately distinct from `## Sources` so the linter does not flag it as the deprecated body-Sources collection. Use `## Derived from` for "the page exists because *that* exists, but *that* is not raw material to ingest"; use `sources:` frontmatter for "this page draws on `raw/<kind>/<slug>.md` material the wiki owns or on a live in-repo document under a declared source root", and leave the field off entirely when the page cites neither. A page may have either, both, or neither.
 - **Fact ownership**: put each fact on the page that owns its subject and link from the pages that only touch it. `SCHEMA.md`'s `## Conventions` bullet **Keep one owner per fact** is the canonical statement of the rule; apply it whenever a detail could sit on two pages at once.
+- **Session detail stays out.** `<session_detail_out_of_wiki>` in
+  `<operational_discipline>` owns the rule, including that a clarification given
+  in the session lands in the text it clarifies and that a redaction writes no
+  log entry.
 - **Page body content**: keep ordinary page bodies to load-bearing knowledge. Lead with one short sentence naming what the page is for, then the entries and facts. Put page-convention definitions, entry-anatomy explanations, canon-kind clauses, and lint-sanction prose in `SCHEMA.md` (page conventions and the `## Lint` acceptance store) or in the audit log — never in an ordinary page body. Carve-out: `SCHEMA.md`, `index.md`, and synthesis types (`summary`, `query`, `comparison`), whose organising prose is their load-bearing content. `SCHEMA.md`'s `## Conventions` bullet **Keep ordinary page bodies to load-bearing knowledge** is the canonical statement.
 - **Structural headings and labels**: a heading or a bold-prefix label names its section's own subject, so it carries no parenthesised metadata — a date, source, session ID, audience, qualifier, mandate level, or scope tag. Route that metadata to its own channel: a frontmatter field, an inline link beside the claim it supports, a `sources:` entry naming the captured sidecar, or the audit log. Match the label vocabulary the wiki's `SCHEMA.md` declares where it declares one, and leave the label wording alone where it declares none. A page title (H1) follows its type anatomy rather than a label vocabulary, so a `query` page carries its question verbatim.
 - **Confidence**: opinion-heavy / fast-moving / single-source claims → `confidence: medium` or `low`. Reserve `high` for multi-source support.
@@ -674,12 +687,15 @@ difference between a growing wiki and a pile of duplicates.
 
 - Add new pages to `index.md` under the correct section, alphabetically.
   Update "Total pages" + "Last updated".
-- Append to `log.md`: `## [YYYY-MM-DD HH:MM] ingest | Source Title`. List only
-  files actually created or updated in this ingest. Skip files that were
-  inspected, considered, or deliberately left unchanged, and do not
-  narrate decisions about what *not* to do. Aim for roughly 20 lines per
-  entry. If it grows past that, the entry is logging non-changes or
-  prose that belongs on a wiki page instead.
+- Record the change in `log.md` under the work unit's open entry, appending a
+  new entry only when none is open: `## [YYYY-MM-DD HH:MM] ingest | Source
+  Title`. List only files actually created or updated in this ingest. Skip
+  files that were inspected, considered, or deliberately left unchanged, and
+  do not narrate decisions about what *not* to do. Aim for roughly 20 lines
+  per entry. If it grows past that, the entry is logging non-changes or prose
+  that belongs on a wiki page instead. When a front end such as `wiki_import`
+  or `wiki_wrapup` already opened this work unit's entry, fold into it rather
+  than appending a second one; `<appending_to_log>` owns the open-entry test.
 </update_navigation>
 
 <run_linter_and_iterate>
@@ -807,11 +823,12 @@ When the user asks a question about the wiki's domain:
      `<write_or_update_pages>` path.
    - **State a concrete reason whenever you skip a trigger-worthy answer.**
      Name that reason in the one-line decision report below.
-6. **Append a `query` log entry when the query changed files.** A query that
-   filed a page or updated existing pages appends one entry listing exactly
-   those files. A query that answered from what was already there changed
-   nothing, so it appends nothing and the in-chat answer is its only trace
-   (see `<appending_to_log>`).
+6. **Record a `query` entry when the query changed files.** A query that
+   filed a page or updated existing pages records one entry listing exactly
+   those files, folding into the work unit's open entry when one exists. A
+   query that answered from what was already there changed nothing, so it
+   writes nothing and the in-chat answer is its only trace (see
+   `<appending_to_log>`).
 7. **Report the filing decision in one line.** Close every query answer with
    one line covering whichever branch happened: filed → name the created
    page's path; skipped → give the reason in the trigger's own terms,
@@ -829,7 +846,8 @@ When content is fully superseded or the domain scope changes:
    path (e.g., `_archive/entities/old-page.md`).
 2. Remove from `index.md`.
 3. Update inbound links: replace with plain text + "(archived)".
-4. Log the archive action.
+4. Record the archive action in the work unit's open `log.md` entry, appending
+   one only when none is open.
 5. Run `python3 "$WIKI_SKILL/scripts/lint.py"`: a page link left pointing at
    the moved file surfaces as a blocking `broken-link`, and an `index.md`
    entry you left behind surfaces as an `index` warn (the linter parses index
@@ -894,8 +912,9 @@ Findings come in three buckets:
   entry with no inline link), cited-but-undeclared (an inline link under `raw/`
   or a declared source root absent from `sources:`), and zero-inline-links (a synthesis page with no
   local `.md` inline links). The two log-entry checks
-  are surfaced for review because repairing an entry already written is an
-  operator-requested move rather than a routine sweep. The citation check
+  are surfaced for review because rewriting a settled entry is an
+  operator-requested move rather than a routine sweep, while an open entry is
+  folded or repaired in place under `<appending_to_log>`. The citation check
   verifies presence and channel consistency, not grounding: cite where the
   claim is grounded rather than adding a citation to clear the check.
 
@@ -906,8 +925,10 @@ Full check matrix: `references/lint_checks.md`.
 **Inline iteration loop.** When the lint scope is narrow (one ingest, one
 archive), run, fix the highest-severity findings, re-run. Repeat until the
 script exits 0. A `contested: true` page keeps its warn by design. That
-dispute signal is for a human to resolve, so it stays in the report. Append
-the outcome to `log.md`:
+dispute signal is for a human to resolve, so it stays in the report. When the
+run changed files, record its outcome in the work unit's open entry, appending
+one only when none is open; a clean run writes no entry, and the audit run
+stays the one zero-change exception `log.md`'s `Entries:` group states:
 
 ```text
 ## [YYYY-MM-DD HH:MM] lint | N blocking, N warn, N info
@@ -956,13 +977,35 @@ For recent log entries, use the entry-anchor recipe in
 </searching>
 
 <appending_to_log>
-**An entry records a change.** Append to `log.md` when the operation created
-or updated wiki files, and write no entry at all when it changed none: a
-question answered from existing pages, an inspection that found nothing to
-fix, a proposal the user declined. Lint and audit runs are the one exception:
-each records its outcome as a process record even when it changed nothing
-(`<inline_iteration_loop>` below and the `auto_shaper_wiki` audit entry), so
-the next run has a baseline to read.
+**An entry records a net change.** Record the work in `log.md` when the
+operation created or updated wiki files, and write nothing when it changed
+none: a question answered from existing pages, an inspection that found nothing
+to fix, a proposal the user declined. Work that no commit ships, such as a
+block deleted and then restored, leaves no entry. A lint run is logged only
+when it changed files, and the audit run is the one zero-change exception,
+which `log.md`'s own `Entries:` group states with its baseline reason.
+
+**An entry settles at commit, so establish which entries are open before
+writing.** An entry the last commit already contains is settled, and append-only
+protects it. An entry the working tree adds is open. Two paths follow: fold into
+this work unit's open entry, or append a new entry when none is open. Folding is
+the default for a later edit that corrects or refines work the same uncommitted
+span already logged.
+
+In a git-backed wiki, `git status --porcelain -- log.md` says only that
+`log.md` carries uncommitted content, because it reports a `log.md` the last
+commit does not contain as `??` while untracked and `A` once staged, and a
+committed `log.md` with changes as `M`. Empty output means no entry is open, so
+the work unit appends a new entry. Output means the uncommitted content must be
+read — `git diff HEAD -- log.md` when `HEAD` exists and the file is tracked, and
+the whole file when the file is untracked or when `git rev-parse --verify HEAD`
+fails, because then no commit contains any of it — and the work unit's open
+entry is the `## [` heading there whose subject matches that unit. Output
+carrying no heading for this unit means the unit appends a new entry and folds
+into nothing: that covers an unrelated work unit's still-uncommitted entry and a
+Repair-carve-out fix to a settled entry, which is never a fold target. In a wiki
+outside version control, every entry written in the current session stays open
+until that session ends.
 
 **An entry is about the wiki, and only the wiki.** The subject of every bullet
 is a file under the wiki and what changed on it. A change elsewhere in the
@@ -975,7 +1018,9 @@ that path standing as what the bullet is about. Two failures this prevents: an
 entry that reads as a commit message with one wiki bullet attached, and an
 entry used as a parking lot for findings no page carries. `log.md`'s own
 preamble carries this rule at the point of use as its `Scope:` group, and the
-linter surfaces a violation as an info `log-scope` finding.
+linter surfaces a violation as an info `log-scope` finding. Leave the session
+that produced the change out of the entry, as `<session_detail_out_of_wiki>`
+requires.
 
 **Every new heading carries a timestamp.** Write
 `## [YYYY-MM-DD HH:MM] action | subject` in local 24-hour time. The time
@@ -984,13 +1029,13 @@ from colliding, which markdownlint MD024 reports as a duplicate heading. A
 legacy date-only heading stays valid exactly as written and is never
 rewritten to add a time it never recorded.
 
-**"Append-only" means newest at the *bottom* of the file, and it binds the
-substance.** Never reword, reorder, or delete what a past entry records. An
-entry may still be edited to repair a structural or lint break it introduced,
-such as a heading that collides with an earlier one or malformed markdown,
-provided the repair keeps what the entry records and where it sits. Repair the
-breakage; leave the substance alone. This is the one permission to touch an
-entry already written.
+**"Append-only" means newest at the *bottom* of the file, and it binds a
+settled entry's substance.** Never reword, reorder, or delete what a settled
+entry records. An open entry takes folds and repairs; a settled entry may still
+be edited to repair a structural or lint break it introduced, such as a heading
+that collides with an earlier one or malformed markdown, provided the repair
+keeps what the entry records and where it sits. Repair the breakage; leave the
+substance alone. This is the one permission to touch a settled entry.
 
 The Edit tool's `old_string` matching makes it easy to anchor on a header and
 insert *before* it, producing inverted order. Avoid that:
@@ -998,10 +1043,12 @@ insert *before* it, producing inverted order. Avoid that:
 - **Anchor on the previous entry's last body line**, never on a
   `## [YYYY-MM-DD HH:MM]` header. New content (blank line + new header + body)
   goes *after* the anchor.
-- **Cluster ordering matches file ordering.** When one workflow produces
-  several entries (ingest → sidecar update → cite), write them earliest-first
-  within the cluster, same direction as the whole-file rule. Resist
-  reverse-chronological "outcome first" narrative ordering.
+- **One work unit is one entry.** A cluster is only several unrelated
+  work-unit entries written in the same uncommitted span, ordered
+  earliest-first, the same direction as the whole-file rule. One work unit — an
+  ingest together with its sidecar update and its cite — folds into its open
+  entry and never becomes a multi-entry cluster. Resist reverse-chronological
+  "outcome first" narrative ordering.
 - **Verify after every log edit:**
 
   ```bash
@@ -1011,6 +1058,23 @@ insert *before* it, producing inverted order. Avoid that:
   The new entry's line number must be the largest. If not, fix before
   continuing.
 </appending_to_log>
+
+<session_detail_out_of_wiki>
+**Session detail stays out of the wiki.** Pages, raw sidecars, and log entries
+record what the wiki holds and what changed in it; the session that produced a
+change stays out. That covers who asked for what, drafts that were replaced,
+and corrections made before the work was committed. A clarification given in
+the same session lands in the text it clarifies, because knowledge a session
+produced is content. A position that changed between dated sources stays on
+record, as the update policy already requires.
+
+**Redaction leaves no trace in the log.** Removing or anonymizing content, as
+an owner does before publishing, writes no log entry and appears in no entry,
+whether the redacted work is open or settled. When the owner has edited a raw
+sidecar's body in place, as a redaction does, the agent refreshes its recorded
+hash with the write mode of `compute_sha256.py`, writes no entry, and reports
+the refresh to the user only.
+</session_detail_out_of_wiki>
 
 <record_only_full_reads>
 **Both records move only over pages read in full.** Two records claim what an
@@ -1123,7 +1187,7 @@ Quick-scan reminders. See the named section for full guidance.
 </update_navigation_reminder>
 
 <log_only_what_changed>
-**Log only what changed.** An operation that created or updated no wiki file writes no entry at all, and an entry that is written lists the wiki files actually created or updated; never narrate inspected-but-unchanged files or "did not edit" decisions. Every bullet's subject is a file under the wiki: a change elsewhere in the repository goes in that change's own commit message, and a finding worth keeping goes onto the page that owns it so the bullet names that page. Lint and audit outcome entries are the sanctioned exception. *(see the `Scope:` group in `log.md`'s preamble for the point-of-use copy of the subject rule, `<appending_to_log>` for when an entry is written, `<update_navigation>` in `<ingest>` for what it lists)*
+**Log only what changed.** An operation that created or updated no wiki file writes no entry at all, and an entry that is written lists the wiki files actually created or updated; never narrate inspected-but-unchanged files or "did not edit" decisions. Every bullet's subject is a file under the wiki: a change elsewhere in the repository goes in that change's own commit message, and a finding worth keeping goes onto the page that owns it so the bullet names that page. A lint run is logged only when it changed files, and the audit run is the one zero-change exception, which `log.md`'s `Entries:` group states with its baseline reason. *(see the `Scope:` group in `log.md`'s preamble for the point-of-use copy of the subject rule, `<appending_to_log>` for when an entry is written and folded, `<update_navigation>` in `<ingest>` for what it lists)*
 </log_only_what_changed>
 
 <page_thresholds>
