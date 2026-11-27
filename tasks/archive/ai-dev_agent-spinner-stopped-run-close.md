@@ -2,8 +2,8 @@
 description: "Let close --stopped end a stopped agent_spinner run by settling its in-flight and never-dispatched rows, so a stopped run closes cleanly instead of staying open forever."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-27T09:00:44Z
-updated: 2026-11-27T20:24:55Z
-status: implemented
+updated: 2026-11-27T21:03:10Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: true
@@ -18,7 +18,7 @@ design-extended: true
 ## Context
 
 - The defect lives in `plugins/ai_dev/skills/agent_spinner/scripts/run_ledger.py`: `TERMINAL` lists only `accepted`, `inability`, `failed`, `unreturned`, and `dropped`; `close_open_items` rejects every row outside that set; and `cmd_close` runs it whether or not `--stopped` is set, returning 3.
-- The archived [terminal-states task](archive/ai-dev_agent-spinner-ledger-terminal-states.md) fixed the stop report's headings and added `dispose --rows`, but it did not relax the close condition. The skill still documents `stop` then `close --stopped` as the way to end a stopped run, so the code contradicts the documented path.
+- The archived [terminal-states task](ai-dev_agent-spinner-ledger-terminal-states.md) fixed the stop report's headings and added `dispose --rows`, but it did not relax the close condition. The skill still documents `stop` then `close --stopped` as the way to end a stopped run, so the code contradicts the documented path.
 - The observed effect: runs in four repositories stayed open after a stop; one session deleted the run directory rather than fake a clean close, and another reported success while its run still showed `state: open`.
 - The settlement must not turn unverified work into accepted work: an `unreturned` or `dropped` row is a recorded non-result, not a pass.
 
