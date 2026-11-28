@@ -458,7 +458,8 @@ Record what became of each record.
   condition 10 once that fork is answered.
 - `--narrowing TEXT`, `--drops LABEL[,LABEL...]`, `--rows LABEL[,LABEL...]`: a
   named narrowing, the roster labels its `--drops` list carries, and the
-  pending rows it retires as `dropped`. `--drops` splits on commas, refuses a
+  pending rows it retires as `dropped`. `--narrowing` alone records a narrowing whose
+  `--drops` list is empty. `--drops` splits on commas, refuses a
   label no roster row carries, and stores the resolved labels. The list records
   coverage only and changes no row's state: a check row closed by
   `--classify` covers its path only when this list names that row. Every label

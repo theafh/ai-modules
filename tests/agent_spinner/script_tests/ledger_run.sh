@@ -4678,6 +4678,24 @@ PY
     fi
 }
 
+scenario_narrowing_print() {
+    dir="$1"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a >/dev/null 2>&1
+    ledger "$dir" brief produce:a --body "A" >/dev/null 2>&1
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{}'
+    ledger "$dir" accept produce:a >/dev/null 2>&1
+    ledger "$dir" dispose --narrowing 'the user chose the generic route' >/dev/null 2>&1
+    ledger "$dir" close > "$dir/close.out" 2>&1
+    if grep -Fxq 'narrowing: the user chose the generic route' "$dir/close.out"; then
+        ok "close prints one narrowing line per narrowing record"
+    else
+        bad "close prints one narrowing line per narrowing record"
+    fi
+}
+
 # --- runner -----------------------------------------------------------------
 
 run_all_scenarios() {
@@ -4701,6 +4719,7 @@ run_all_scenarios() {
     scenario_counters "$root/counters"
     scenario_gate_expect "$root/gate-expect"
     scenario_close_conditions "$root/close"
+    scenario_narrowing_print "$root/narrowing-print"
     scenario_run_directory "$root/run-directory"
     scenario_scratch_directory "$root/scratch-directory"
     scenario_repo_safety "$root/repo-safety"

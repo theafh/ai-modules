@@ -14,7 +14,7 @@ description: >
   plan. Route a task-backlog request to task_* and a wiki request to wiki_fix,
   unless the user names agent_spinner; those families keep their own contracts.
   Per-harness facts stay with harness_portability.
-version: 1.0.47
+version: 1.0.48
 author: Andreas F. Hoffmann
 license: MIT
 ---
@@ -49,7 +49,7 @@ Establish each capability by observation. A registered role is one the host's sp
 State the tier the run reaches in the announcement before the first helper: the inline floor, or spawned roles with the capabilities the probe established.
 
 1. **Inline floor**: no delegation surface. Each pass opens on its own brief file and closes on its own return file before the next brief is read.
-2. **Spawned roles**: each pass runs in its own context from the same files. Enforced read-only, a depth pin, and concurrent fan-out each add to this tier on their own, as the probe establishes them. Where the probe finds `auto_checker_spinner` or `auto_writer_spinner` among the roles the host's spawn surface lists or accepts by name, spawn through it, since a registered role can carry a read-only lever and a depth setting that a generic spawn lacks. Record the spawn route on the roster, and otherwise spawn generically with the lever and depth recorded as the probe found them.
+2. **Spawned roles**: each pass runs in its own context from the same files. Enforced read-only, a depth pin, and concurrent fan-out each add to this tier on their own, as the probe establishes them. Where the probe finds `auto_checker_spinner` or `auto_writer_spinner` among the roles the host's spawn surface lists or accepts by name, spawn through it, since a registered role can carry a read-only lever and a depth setting that a generic spawn lacks. Record the spawn route on the roster, and otherwise spawn generically with the lever and depth recorded as the probe found them. A generic spawn is a narrowing, recorded with the route and the reason the run did not use a role. Name the reason as one of: the probe found no role, the user chose the generic route, the host refused the registered role at spawn, or the role failed and the single re-invocation ran generically. Record it through `dispose --narrowing`, whose text carries the route and the reason.
 
 Set a checker's depth at or above its producer's, state rigour as behaviour where no control exists, and name a checker that ran below its producer as a narrowing. Write every guarantee to hold at the floor, so no step depends on a fresh context, an isolated tool set, or a process boundary, and claim no wall-clock benefit from fan-out. Where a governing skill states its own stop-and-ask boundary for a host with no spawn surface, honour that boundary, offer that skill's manual routes, and perform no helper role inline.
 </degradation>

@@ -249,6 +249,8 @@ Requested and observed model and effort: survey, default model and low effort
 requested, default model and low effort observed; check, default model and
 high effort requested, default model and high effort observed.
 
+narrowing: the three excluded candidates went unsurveyed
+
 Coverage narrowing: the three excluded candidates went unsurveyed, so contract
 drift there would not have surfaced here. A second phase over those three
 would surface it.

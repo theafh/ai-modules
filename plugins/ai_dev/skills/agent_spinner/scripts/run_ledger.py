@@ -3809,6 +3809,9 @@ def cmd_close(args):
         rewrite_report_tally(led)
     block = tally_block(led)
     print(block)
+    for rec in led.records():
+        if rec.get("type") == "narrowing":
+            print("narrowing: %s" % rec.get("text"))
     if args.stopped:
         changed = [c.get("path") for c in led.run.get("changes", []) if not c.get("path", "").startswith("<")]
         print("modified:")

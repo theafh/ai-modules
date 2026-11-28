@@ -18,7 +18,7 @@ helper whose work a checker tests. A refute-by-default check starts from the
 position that the work is wrong and concedes only after its checklist. A gate
 is a deterministic command, such as a linter, that `gate` runs and records. A
 narrowing is any reduction in what the run checks, and the report names every
-narrowing.
+narrowing. Running a found role generically is a narrowing of the host-enforced lever.
 
 ## C1. Check every landed write.
 

@@ -336,11 +336,27 @@ write_probe_store() {
 JSON
 }
 
+write_route_ledger() {
+  printf '{"type": "narrowing", "text": "generic route: the probe found no role", "drops": []}\n' \
+    > "$route_proj/.agent_spinner/ledger.jsonl"
+}
+
 write_probe_store ""
+write_route_ledger
 generic_out="$("$GRADE" "$ROUTE_EVAL" "$route_proj" "$route_response" 2>&1)"; generic_rc=$?
 printf '%s\n' "$generic_out" > "$SCRATCH/route-generic.grading.txt"
 check "a generic-spawn without-role run grades clean" test "$generic_rc" -eq 0
 
+: > "$route_proj/.agent_spinner/ledger.jsonl"
+missing_out="$("$GRADE" "$ROUTE_EVAL" "$route_proj" "$route_response" 2>&1)"; missing_rc=$?
+printf '%s\n' "$missing_out" > "$SCRATCH/route-missing-narrowing.grading.txt"
+check "a missing narrowing record fails the without-role case" \
+  test "$missing_rc" -ne 0
+check "the failure names the narrowing check" \
+  grading_has "$SCRATCH/route-missing-narrowing.grading.txt" \
+  "the ledger records a narrowing naming the generic route"
+
+write_route_ledger
 write_probe_store ',
   "probe:auto_checker_spinner": {
     "delegation": "established",
@@ -965,6 +981,25 @@ run_grade role-spawned "$ROLE_EVAL" "$role_proj" "$role_resp" >/dev/null
 check "a spawn call naming the checker role passes the spawn check" \
   grading_pass "$SCRATCH/role-spawned.grading.txt" \
   "the recorded tool calls hold a spawn call naming the checker role"
+
+# The checker brief must carry the write instruction naming the target; a brief
+# that omits it fails the new brief check, and one that carries it passes.
+mkdir -p "$role_proj/.agent_spinner/briefs"
+printf 'check:settings\tcheck\tcheck\tsettings\tsettings.md\tdoc-page\taccepted\t1\n' \
+  > "$role_proj/.agent_spinner/roster.tsv"
+printf 'Read the producer return and check settings.md.\n' \
+  > "$role_proj/.agent_spinner/briefs/check:settings.txt"
+run_grade role-brief-missing "$ROLE_EVAL" "$role_proj" "$role_resp" >/dev/null
+check "a checker brief without the write instruction fails the brief check" \
+  grading_has "$SCRATCH/role-brief-missing.grading.txt" \
+  "the checker brief carries the write instruction naming .agent_spinner/checker-write.txt"
+
+printf 'Read the producer return and check settings.md. Attempt to write your verdict to .agent_spinner/checker-write.txt before you return.\n' \
+  > "$role_proj/.agent_spinner/briefs/check:settings.txt"
+run_grade role-brief-present "$ROLE_EVAL" "$role_proj" "$role_resp" >/dev/null
+check "a checker brief carrying the write instruction passes the brief check" \
+  grading_pass "$SCRATCH/role-brief-present.grading.txt" \
+  "the checker brief carries the write instruction naming .agent_spinner/checker-write.txt"
 
 # --- counter and narrowing record shapes ------------------------------------
 #

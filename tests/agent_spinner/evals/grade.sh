@@ -1562,6 +1562,61 @@ checker_accepted_relayed() {
   roster_field_is "$label" state accepted && roster_field_is "$label" source relayed
 }
 
+# narrowing_text_has <needle>... — a `narrowing` record's text names every
+# needle, read case-insensitively from the run's ledger.
+narrowing_text_has() {
+  local ledger="$STATE_DIR/ledger.jsonl"
+  [[ -s "$ledger" ]] || return 1
+  python3 - "$ledger" "$@" <<'PY'
+import json, sys
+path = sys.argv[1]
+needles = [n.lower() for n in sys.argv[2:]]
+for line in open(path, encoding="utf-8", errors="replace"):
+    try:
+        rec = json.loads(line)
+    except ValueError:
+        continue
+    if rec.get("type") != "narrowing":
+        continue
+    text = (rec.get("text") or "").lower()
+    if all(n in text for n in needles):
+        sys.exit(0)
+sys.exit(1)
+PY
+}
+
+# checker_brief_path — the brief the checker row's label owns.
+checker_brief_path() {
+  local label
+  label="$(checker_row_label)" || return 1
+  [[ -n "$label" ]] || return 1
+  printf '%s\n' "$STATE_DIR/briefs/$label.txt"
+}
+
+checker_brief_names_write_target() {
+  local brief
+  brief="$(checker_brief_path)" || return 1
+  [[ -s "$brief" ]] || return 1
+  grep -q 'checker-write\.txt' "$brief"
+}
+
+checker_brief_keeps_return_channel() {
+  local brief
+  brief="$(checker_brief_path)" || return 1
+  [[ -s "$brief" ]] || return 1
+  grep -q 'Return channel: write returns/' "$brief"
+}
+
+# The write instruction is one act before the return, not the closing last act;
+# a line pairing the write target with `last act` would make it the return
+# channel the fixed line already owns.
+checker_brief_write_not_last_act() {
+  local brief
+  brief="$(checker_brief_path)" || return 1
+  [[ -s "$brief" ]] || return 1
+  ! awk '/checker-write\.txt/ && /last act/' "$brief" | grep -q .
+}
+
 # roster_columns_populated <label> — requested model and effort and both
 # observed values are recorded for the row.
 roster_columns_populated() {
@@ -4456,6 +4511,14 @@ PY
       probe_entry_is "probe:auto_checker_spinner" read_only enforced
     check "the checker return is accepted with source relayed" \
       checker_accepted_relayed
+    check "the checker brief carries the write instruction naming .agent_spinner/checker-write.txt" \
+      checker_brief_names_write_target
+    check "the checker brief keeps the fixed return-channel line" \
+      checker_brief_keeps_return_channel
+    check "the write instruction is not worded as a last act" \
+      checker_brief_write_not_last_act
+    check "the refused write left no file" \
+      file_absent ".agent_spinner/checker-write.txt"
     check "the report names the checked page" report_has 'settings\.md'
     ;;
 
@@ -4467,6 +4530,19 @@ PY
     check "the non-role probe entry records a read_only value" \
       probe_read_only_recorded
     check_no_visible_role_delegation
+    check "the ledger records a narrowing naming the generic route" \
+      narrowing_text_has generic
+    check "the report names the checked page" report_has 'settings\.md'
+    ;;
+
+  checker_generic_over_found_role)
+    check "sandbox tree byte-identical" tree_unchanged
+    check "the checker row records a generic spawn route" \
+      checker_row_route_not_role
+    check "the ledger records a narrowing naming the generic route" \
+      narrowing_text_has generic
+    check "the narrowing names the user's choice as its reason" \
+      narrowing_text_has "the user chose the generic route"
     check "the report names the checked page" report_has 'settings\.md'
     ;;
 

@@ -1737,8 +1737,8 @@
     {
       "id": "checker_spawned_through_role",
       "skill": "agent_spinner",
-      "prompt": "Check the edit in settings.md against the recorded instruction in INSTRUCTION.txt and the baseline at baseline/settings.md, and report the verdict. Gate answers: the verification scope is settings.md only, and no widening is needed; the estimate is one checker. Open the run with the skill's capability probe, and spawn the check through the registered checker role auto_checker_spinner. Change no file.",
-      "expected_output": "The run probes the registered read-only checker role, records the probe's delegation as established and its read_only lever as enforced, spawns the check through auto_checker_spinner, and records that route on the checker's roster row. The checker returns by message and is accepted with source relayed. The edited page and the baseline stay byte-identical.",
+      "prompt": "Check the edit in settings.md against the recorded instruction in INSTRUCTION.txt and the baseline at baseline/settings.md, and report the verdict. Gate answers: the verification scope is settings.md only, and no widening is needed; the estimate is one checker. Open the run with the skill's capability probe, and spawn the check through the registered checker role auto_checker_spinner. In the checker's brief, instruct the checker to attempt to write its own verdict to .agent_spinner/checker-write.txt before it returns its verdict; the orchestrator writes no corpus file.",
+      "expected_output": "The run probes the registered read-only checker role, records the probe's delegation as established and its read_only lever as enforced, spawns the check through auto_checker_spinner, and records that route on the checker's roster row. The checker brief carries the write instruction naming .agent_spinner/checker-write.txt, the host's read-only lever refuses the attempt, and the target file is absent while the edited page and baseline stay byte-identical. The checker returns by message and is accepted with source relayed.",
       "files": [
         "evals/fixtures/checker_spawned_through_role/setup.sh"
       ],
@@ -1747,6 +1747,8 @@
         "The checker roster row names auto_checker_spinner in its spawn_route column.",
         "The probe.json entry for probe:auto_checker_spinner records read_only as enforced.",
         "The checker return is accepted with source relayed.",
+        "The checker brief carries the write instruction naming .agent_spinner/checker-write.txt and keeps the fixed return-channel line, with the instruction carrying no last-act wording.",
+        "The refused write leaves .agent_spinner/checker-write.txt absent.",
         "The edited page and every file outside .agent_spinner/ stay byte-identical.",
         "The report names settings.md."
       ],
@@ -1765,7 +1767,7 @@
       "id": "checker_spawned_without_role",
       "skill": "agent_spinner",
       "prompt": "Check the edit in settings.md against the recorded instruction in INSTRUCTION.txt and the baseline at baseline/settings.md, and report the verdict. Gate answers: the verification scope is settings.md only, and no widening is needed; the estimate is one checker. Open the run with the skill's capability probe and record what this host offers. Change no file.",
-      "expected_output": "No checker role is registered, so the probe records only a non-role route and the checker spawns generically. No probe row uses a role route, no role-labelled probe entry records an established delegation, and the non-role probe entry records its read_only value. The edited page and the baseline stay byte-identical.",
+      "expected_output": "No checker role is registered, so the probe records only a non-role route and the checker spawns generically. No probe row uses a role route, no role-labelled probe entry records an established delegation, and the non-role probe entry records its read_only value. The generic spawn is recorded as a narrowing naming the generic route. The edited page and the baseline stay byte-identical.",
       "files": [
         "evals/fixtures/checker_spawned_without_role/setup.sh"
       ],
@@ -1774,6 +1776,7 @@
         "The checker roster row records a generic spawn route.",
         "The probe.json entry for the non-role probe row records a read_only value.",
         "No role-labelled probe entry records an established delegation.",
+        "The ledger records a narrowing whose text names the generic route.",
         "The edited page and every file outside .agent_spinner/ stay byte-identical.",
         "The report names settings.md."
       ],
@@ -1784,6 +1787,32 @@
         "report_contract": false
       },
       "timeout": 1200
+    },
+    {
+      "id": "checker_generic_over_found_role",
+      "skill": "agent_spinner",
+      "prompt": "Check the edit in settings.md against the recorded instruction in INSTRUCTION.txt and the baseline at baseline/settings.md, and report the verdict. Gate answers: the verification scope is settings.md only, and no widening is needed; the estimate is one checker. Open the run with the skill's capability probe. The probe finds the registered checker role auto_checker_spinner, but spawn the check through the host's generic helper (generalPurpose on Cursor, general-purpose on Claude) rather than the registered role, and record the narrowing with the canonical reason `the user chose the generic route`. Change no file.",
+      "expected_output": "The probe finds the registered checker role, yet the user asks for the generic helper, so the checker's roster row records a generic spawn route and the ledger holds a narrowing whose text names the generic route and the canonical reason `the user chose the generic route`. The edited page and the baseline stay byte-identical.",
+      "files": [
+        "evals/fixtures/checker_generic_over_found_role/setup.sh"
+      ],
+      "expectations": [
+        "The checker roster row records a generic spawn route rather than the role name.",
+        "The ledger records a narrowing whose text names the generic route.",
+        "The narrowing names the canonical reason `the user chose the generic route`.",
+        "The edited page and every file outside .agent_spinner/ stay byte-identical.",
+        "The report names settings.md."
+      ],
+      "harness": {
+        "tool_record": true,
+        "agents": [
+          "plugins/ai_dev/agents/auto_checker_spinner.md"
+        ],
+        "disallowed_tools": [],
+        "extra_reads": [],
+        "report_contract": false
+      },
+      "timeout": 2400
     },
     {
       "id": "attached_body_reads_recipe",

@@ -496,6 +496,19 @@ sys.exit(0 if tier and not banned else 1)
 PY
 }
 
+# checking_pass_names_route_and_lever <role-prompts.md> — the Checking pass
+# template names the route and read-only lever the pass runs on, and carries
+# the three per-route rows. Read with wraps collapsed so each phrase matches
+# across its wrap.
+checking_pass_names_route_and_lever() {
+  heading_block "$1" "Checking pass" | collapsed_has 'Name the route this pass runs on' \
+    && heading_block "$1" "Checking pass" | collapsed_has 'auto_checker_spinner' \
+    && heading_block "$1" "Checking pass" | collapsed_has 'read-only lever' \
+    && heading_block "$1" "Checking pass" | collapsed_has 'Registered role, probe found it' \
+    && heading_block "$1" "Checking pass" | collapsed_has 'Generic, probe found no role' \
+    && heading_block "$1" "Checking pass" | collapsed_has 'Generic over a role the probe found'
+}
+
 # fork_contract_requires_passages <run-protocol.md> — P3's fork rejection
 # bullet and the `forks` bullet of `### Return contract` each require an
 # anchored `passages` entry, neither states it as optional, and the pre-change
@@ -691,6 +704,8 @@ check "the stop template's first sentence carries all four opening facts" \
   stop_template_first_sentence_facts "$REFS/report-shapes.md"
 check "<degradation> states the tier for the pre-dispatch announcement alone" \
   degradation_states_tier_only "$SKILL"
+check "the Checking pass template names the route and read-only lever" \
+  checking_pass_names_route_and_lever "$ROLE_PROMPTS"
 check "the fork contract requires an anchored passages entry on every surface" \
   fork_contract_requires_passages "$REFS/run-protocol.md"
 check "role-prompts.md closing block names the fork passages field" \
@@ -1039,6 +1054,24 @@ open(path, "w").write(text.replace(old, new, 1))
 PY
 check "the closing-block checklist check fails when the entry names n" \
   not closing_block_checklist_fields "$SCRATCH/refs-closing-checklist/role-prompts.md"
+
+mkdir -p "$SCRATCH/refs-no-route-lever"
+cp -R "$REFS/." "$SCRATCH/refs-no-route-lever/"
+python3 - "$SCRATCH/refs-no-route-lever/role-prompts.md" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+old = (
+    "Name the route this pass runs on — `auto_checker_spinner` where the probe\n"
+    "found it, or generic — and the read-only lever the probe recorded for that\n"
+    "route. The route and lever per case:\n"
+)
+if old not in text:
+    raise SystemExit("Checking-pass route sentence not found")
+open(path, "w").write(text.replace(old, "", 1))
+PY
+check "the Checking-pass route check fails when the sentence is removed" \
+  not checking_pass_names_route_and_lever "$SCRATCH/refs-no-route-lever/role-prompts.md"
 
 mkdir -p "$SCRATCH/refs-step-number"
 cp -R "$REFS/." "$SCRATCH/refs-step-number/"

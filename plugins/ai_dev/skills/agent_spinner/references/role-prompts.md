@@ -173,6 +173,16 @@ per-file diff under [the diff path].
 
 [access block]
 
+Name the route this pass runs on — `auto_checker_spinner` where the probe
+found it, or generic — and the read-only lever the probe recorded for that
+route. The route and lever per case:
+
+| Route | `spawn_route` | Lever the brief states |
+| --- | --- | --- |
+| Registered role, probe found it | `auto_checker_spinner` | `read_only` as the probe recorded it for the role, plus the role's own `readonly: true` and `Read, Grep, Glob` tool list |
+| Generic, probe found no role | `generic` (the host's generic helper included) | `read_only` as the probe recorded it, `assumed absent` where no lever was established; the brief's prohibition is the only guard |
+| Generic over a role the probe found | `generic` | `read_only` as the probe recorded it, `assumed absent` where no lever was established, with the reason from step 1 in the `narrowing` record's text, not in a roster column |
+
 Open from this position: the work is incomplete or wrong. Concede it only
 after running this checklist, and cite the span that settled each line:
 

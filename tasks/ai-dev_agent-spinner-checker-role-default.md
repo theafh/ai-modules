@@ -2,9 +2,11 @@
 description: "Make auto_checker_spinner the default route for agent_spinner checking passes and record a generic spawn as a named narrowing."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-27T09:00:44Z
-updated: 2026-11-27T17:21:53Z
-status: ready
+updated: 2026-11-28T10:45:15Z
+status: implemented
 reported-by: Andreas Hoffmann
+implemented-by: Andreas Hoffmann
+design-extended: false
 ---
 
 # Route agent_spinner checking passes through the read-only checker role
