@@ -2,8 +2,8 @@
 description: "Make the agent_spinner ledger accept valid gate argv and an absolute brief target, and stop the brief verb crashing when its source and destination are one file."
 scope: plugins/ai_dev/skills/agent_spinner
 created: 2026-11-27T09:00:44Z
-updated: 2026-11-28T00:11:12Z
-status: implemented
+updated: 2026-11-28T00:23:46Z
+status: finished
 reported-by: Andreas Hoffmann
 implemented-by: Andreas Hoffmann
 design-extended: true
