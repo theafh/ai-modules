@@ -1797,6 +1797,7 @@
         "evals/fixtures/checker_generic_over_found_role/setup.sh"
       ],
       "expectations": [
+        "The probe.json entry for probe:auto_checker_spinner records read_only as enforced.",
         "The checker roster row records a generic spawn route rather than the role name.",
         "The ledger records a narrowing whose text names the generic route.",
         "The narrowing names the canonical reason `the user chose the generic route`.",

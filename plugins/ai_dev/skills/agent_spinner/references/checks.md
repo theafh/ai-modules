@@ -19,6 +19,8 @@ position that the work is wrong and concedes only after its checklist. A gate
 is a deterministic command, such as a linter, that `gate` runs and records. A
 narrowing is any reduction in what the run checks, and the report names every
 narrowing. Running a found role generically is a narrowing of the host-enforced lever.
+A generic spawn where the probe found no role is a narrowing too, recorded with
+the reason the run did not use a role.
 
 ## C1. Check every landed write.
 

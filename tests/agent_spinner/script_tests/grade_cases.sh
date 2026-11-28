@@ -371,6 +371,64 @@ check "a role-labelled established delegation fails the without-role case" \
 check "the failure names the visible deployed copy" \
   bash -c "grep -Fq 'the worker saw a deployed copy named auto_checker_spinner' '$SCRATCH/route-visible.grading.txt'"
 
+# --- checker_generic_over_found_role: the probe records the role's lever -----
+#
+# The eval's premise is that the probe finds auto_checker_spinner, so its
+# probe.json entry must record the role's read_only lever as enforced, the way
+# the through-role arm requires. A run that records the lever as not-enforced
+# fails; before this pair the arm asserted only the generic route and the
+# narrowing, so a run whose probe never recorded the role graded clean.
+GENERIC_ROLE_EVAL=checker_generic_over_found_role
+generic_role_staged="$("$STAGE" "$GENERIC_ROLE_EVAL" "$SCRATCH/generic-role-staged" 2>"$SCRATCH/generic-role-stage.err")" || {
+  printf 'FAIL: could not stage %s\n' "$GENERIC_ROLE_EVAL"
+  cat "$SCRATCH/generic-role-stage.err"
+  exit 1
+}
+eval "$generic_role_staged"
+# shellcheck disable=SC2154  # assigned by the stage.sh output evaluated above
+generic_role_proj="$sandbox_proj"
+generic_role_response="$SCRATCH/generic-role-response.txt"
+printf 'The check of settings.md is complete: the edit matches the recorded instruction.\n' \
+  > "$generic_role_response"
+
+mkdir -p "$generic_role_proj/.agent_spinner"
+printf 'probe:auto_checker_spinner\tprobe\tprobe\tauto_checker_spinner\t\tprobe\taccepted\t0\t\t\t\tauto_checker_spinner\n' \
+  > "$generic_role_proj/.agent_spinner/roster.tsv"
+printf 'check:settings\tcheck\tcheck\tsettings\tsettings.md\tdoc-page\taccepted\t1\t\t\t\tgeneralpurpose\n' \
+  >> "$generic_role_proj/.agent_spinner/roster.tsv"
+printf '{"type": "narrowing", "text": "generic route: the user chose the generic route", "drops": []}\n' \
+  > "$generic_role_proj/.agent_spinner/ledger.jsonl"
+
+write_generic_role_probe() {
+  local read_only="$1"
+  cat > "$generic_role_proj/.agent_spinner/probe.json" <<JSON
+{
+  "probe:auto_checker_spinner": {
+    "delegation": "established",
+    "read_only": "$read_only",
+    "depth": "unobserved",
+    "model": "observed"
+  }
+}
+JSON
+}
+
+PROBE_LABEL="the role probe records read_only as enforced"
+
+write_generic_role_probe enforced
+generic_role_rc="$(run_grade generic-role-enforced "$GENERIC_ROLE_EVAL" "$generic_role_proj" "$generic_role_response")"
+check "a generic spawn over a found role grades clean when the probe records read_only enforced" \
+  test "$generic_role_rc" -eq 0
+check "the enforced-lever case passes the probe check" \
+  grading_pass "$SCRATCH/generic-role-enforced.grading.txt" "$PROBE_LABEL"
+
+write_generic_role_probe not-enforced
+generic_role_bad_rc="$(run_grade generic-role-not-enforced "$GENERIC_ROLE_EVAL" "$generic_role_proj" "$generic_role_response")"
+check "a generic spawn over a found role fails when the probe records no enforced lever" \
+  test "$generic_role_bad_rc" -ne 0
+check "the failure names the probe check" \
+  grading_has "$SCRATCH/generic-role-not-enforced.grading.txt" "$PROBE_LABEL"
+
 # --- sweep evals: an accepted check row, not just any row -------------------
 #
 # `diff --add-checks` creates a check row unprompted and `accept --classify`

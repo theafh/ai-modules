@@ -4537,6 +4537,13 @@ PY
 
   checker_generic_over_found_role)
     check "sandbox tree byte-identical" tree_unchanged
+    # The eval's premise is that the probe finds auto_checker_spinner, so the
+    # probe entry must record the role's read-only lever the way the through-role
+    # arm requires. Without it the arm passed a run whose probe never recorded
+    # the role, which is the generic-spawn-without-role shape under a
+    # found-role prompt.
+    check "the role probe records read_only as enforced" \
+      probe_entry_is "probe:auto_checker_spinner" read_only enforced
     check "the checker row records a generic spawn route" \
       checker_row_route_not_role
     check "the ledger records a narrowing naming the generic route" \
