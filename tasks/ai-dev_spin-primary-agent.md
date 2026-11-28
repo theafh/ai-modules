@@ -2,7 +2,7 @@
 description: "Trial the inline spin primary agent on three delegation jobs, then promote it into the ai_dev plugin as a primary agent if it holds the agent_spinner contract, or defer it with the failures recorded."
 scope: plugins/ai_dev
 created: 2026-11-27T09:00:44Z
-updated: 2026-11-27T21:03:10Z
+updated: 2026-11-28T10:58:15Z
 status: ready
 reported-by: Andreas Hoffmann
 ---
@@ -22,7 +22,7 @@ The `spin` primary agent earns a place in the `ai_dev` plugin, or the trial reco
 - The primary agent is meant for the OpenCode target, the only harness whose agent surface expresses a primary mode. Antigravity's generator writes `mainAgent: false` unconditionally, and the VS Code, Cursor, Claude, and Codex generators carry no primary concept, so a deployed copy on those targets stays a non-primary agent.
 - The user wants to try the agent from the picker, where it appears, before enforcing it with a prompt hook or moving it into the plugin. This task is the promotion decision after that trial, not the hook.
 - The trial's proof surface is a tracked record, not a gitignored eval run. `tests/agent_spinner/RUNBOOK.md` documents how each measurement is run and already holds recorded measurements under its `### Recorded measurements` heading, so it is the natural home for a `## Spin agent trial` section.
-- The trial measures the checker route, the follow-up contract, and the stopped-run close, so it runs after [the checker-role task](ai-dev_agent-spinner-checker-role-default.md), [the follow-up task](archive/ai-dev_agent-spinner-followup-contract.md), and [the stopped-close task](archive/ai-dev_agent-spinner-stopped-run-close.md) ship; a trial before them measures the defects those tasks fix.
+- The trial measures the checker route, the follow-up contract, and the stopped-run close, so it runs after [the checker-role task](archive/ai-dev_agent-spinner-checker-role-default.md), [the follow-up task](archive/ai-dev_agent-spinner-followup-contract.md), and [the stopped-close task](archive/ai-dev_agent-spinner-stopped-run-close.md) ship; a trial before them measures the defects those tasks fix.
 - Versioning and the generic gates follow the standing repo rules; this task adds only the checks its own change needs.
 
 ## Approach
