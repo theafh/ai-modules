@@ -1450,7 +1450,7 @@ def cmd_brief(args):
     refuse_writer_on_owned_target(led, row, target)
     if target:
         target = norm_path(led.root, target)
-        if os.path.isabs(target) or target.startswith("../"):
+        if os.path.isabs(target) or target == ".." or target.startswith("../"):
             die(
                 "brief target %s resolves outside the project; refusing row %s"
                 % (target, args.label)

@@ -1033,7 +1033,8 @@ scenario_input_contracts() {
     else
         ok "an out-of-project absolute target is refused"
     fi
-    check "the refusal names the row and the target" grep -q 'outside' "$odir/.agent_spinner/outside.out"
+    check "the refusal names the row" grep -qF 'produce:a' "$odir/.agent_spinner/outside.out"
+    check "the refusal names the target" grep -qF 'outside.txt' "$odir/.agent_spinner/outside.out"
     check "the refused brief copies nothing" test ! -d "$odir/.agent_spinner/baseline/inputs/produce:a"
 
     gdir="$base/no-controls"
@@ -1043,7 +1044,7 @@ scenario_input_contracts() {
     else
         ok "init refuses a gate argv without {controls}"
     fi
-    check "the refusal names the gate" grep -q 'lint' "$gdir/init.out"
+    check "the refusal names the gate" grep -qF 'gate lint command needs a {controls} placeholder' "$gdir/init.out"
     check "the refused init leaves no request.txt" test ! -f "$gdir/.agent_spinner/request.txt"
 
     adir="$base/gate-argv"
