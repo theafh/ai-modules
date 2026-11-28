@@ -1034,6 +1034,7 @@ scenario_input_contracts() {
         ok "an out-of-project absolute target is refused"
     fi
     check "the refusal names the row and the target" grep -q 'outside' "$odir/.agent_spinner/outside.out"
+    check "the refused brief copies nothing" test ! -d "$odir/.agent_spinner/baseline/inputs/produce:a"
 
     gdir="$base/no-controls"
     setup_repo "$gdir"
@@ -1081,6 +1082,7 @@ PY
     fi
     ledger "$adir" gate md -- "$adir/gate.sh" '{controls}' >/dev/null 2>&1
     check "an operator ARGV renders the {controls} placeholder" grep -q 'controls/md' "$adir/gate-args.txt"
+    check "the rendered ARGV carries only its own argument" test "$(cat "$adir/gate-args.txt")" = "$adir/.agent_spinner/controls/md"
     ledger "$adir" gate md -- "$adir/gate.sh" >/dev/null 2>&1
     if grep -q 'controls' "$adir/gate-args.txt"; then
         bad "an operator ARGV without a placeholder runs verbatim"
