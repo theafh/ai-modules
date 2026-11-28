@@ -885,20 +885,18 @@ def gate_spec(name, command):
         die("gate %s has an unparsable command: %s" % (name, exc))
     if not argv:
         die("gate %s has an empty command" % name)
+    if not any("{controls}" in arg for arg in argv):
+        die(
+            "gate %s command needs a {controls} placeholder: %s"
+            % (name, command)
+        )
     return {"name": name, "argv": argv, "auto_fix": False, "plant": "", "reports_plant": False}
 
 
 def run_gate_argv(argv, root, controls_dir):
     rendered = []
-    used = False
     for arg in argv:
-        if "{controls}" in arg:
-            rendered.append(arg.replace("{controls}", controls_dir))
-            used = True
-        else:
-            rendered.append(arg)
-    if not used:
-        rendered.append(controls_dir)
+        rendered.append(arg.replace("{controls}", controls_dir))
     try:
         proc = subprocess.run(
             rendered, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
@@ -1079,6 +1077,7 @@ def cmd_init(args):
         spec["reports_plant"] = bool(output and plant_name in output)
         spec["baseline_rc"] = rc
         spec["baseline_output"] = output or ""
+        spec["controls"] = os.path.relpath(gate_controls, led.root)
         gate_records[name] = spec
 
     run_id = datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + short_hash(led.cwd, 4)
@@ -1450,6 +1449,12 @@ def cmd_brief(args):
     target = row.get("path") or args.target or ""
     refuse_writer_on_owned_target(led, row, target)
     if target:
+        target = norm_path(led.root, target)
+        if os.path.isabs(target) or target.startswith("../"):
+            die(
+                "brief target %s resolves outside the project; refusing row %s"
+                % (target, args.label)
+            )
         row["path"] = target
         recorded_dir = "snapshots" if row.get("kind") == "reader" else "baseline"
         src = os.path.join(led.root, target)
@@ -3002,7 +3007,16 @@ def cmd_diff(args):
 
 def cmd_gate(args):
     led = Ledger()
+    gate = led.run.get("gates", {}).get(args.name, {})
     command = [arg for arg in (args.command or []) if arg != "--"]
+    controls_dir = ""
+    if gate.get("controls"):
+        controls_dir = os.path.join(led.root, gate["controls"])
+    if not command:
+        if not gate:
+            die("gate %s is not registered" % args.name)
+        command = list(gate.get("argv", []))
+    command = [arg.replace("{controls}", controls_dir) for arg in command]
     if not command:
         die("gate needs a command after --")
     resolved = shutil.which(command[0])
@@ -3883,7 +3897,7 @@ def build_parser():
     p.add_argument("--unit", action="append", default=[], help="role:item unit")
     p.add_argument("--unit-path", action="append", default=[], help="LABEL=PATH target")
     p.add_argument("--exclude", action="append", default=[], help="LABEL:REASON")
-    p.add_argument("--gate", action="append", default=[], help="NAME=COMMAND")
+    p.add_argument("--gate", action="append", default=[], help="NAME=COMMAND with a {controls} placeholder")
     p.add_argument("--auto-fix-gate", action="append", default=[], help="NAME of an auto-fixing gate")
     p.add_argument("--owned-target", action="append", default=[], help="PATH:FAMILY:GATE")
     p.add_argument("--counter", action="append", default=[], help="NAME=PATTERN")

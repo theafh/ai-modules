@@ -33,7 +33,7 @@ commit_tree "$proj"
 # when `diff --count` runs, which is the positive control a count gate needs.
 run_ledger "$proj" init --phase measure --bound 240 \
   --unit measure:page --unit-path measure:page=docs/page.md \
-  --gate count=./bin/count.sh \
+  --gate "count=./bin/count.sh {controls}" \
   --counter 'dashes=—|CONTROL_MARKER' \
   --counter 'percentages=%|CONTROL_MARKER' >/dev/null
 

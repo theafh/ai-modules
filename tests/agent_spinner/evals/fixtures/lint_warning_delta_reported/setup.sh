@@ -26,7 +26,7 @@ printf '2\n' > "$proj/warnings.txt"
 
 commit_tree "$proj"
 run_ledger "$proj" init --phase check --bound 240 \
-  --gate "lint=./lint.sh" --unit produce:alpha \
+  --gate "lint=./lint.sh {controls}" --unit produce:alpha \
   --unit-path produce:alpha=docs/alpha.md >/dev/null
 
 # The requested edit raises the warning count, none of them blocking.

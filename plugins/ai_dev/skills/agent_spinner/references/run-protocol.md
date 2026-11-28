@@ -334,7 +334,9 @@ opens no run; it needs `--cheapest ROUTE` or one or more `--role ROUTE`.
 - `--unit role:item` (repeatable): one roster row, labelled `role:item`.
 - `--unit-path LABEL=PATH`: the row's target path.
 - `--exclude LABEL:REASON`: a counted exclusion.
-- `--gate NAME=COMMAND`: a gate run at the baseline for its gate-scope result.
+- `--gate NAME=COMMAND`: registers a gate whose COMMAND carries a `{controls}`
+  placeholder, and `init` refuses a COMMAND without one with an error naming
+  the gate. The gate runs at the baseline for its gate-scope result.
 - `--auto-fix-gate NAME`: refused; the ledger registers no auto-fix gate while
   run state exists.
 - `--owned-target PATH:FAMILY:GATE`: a path whose field a named gate owns.
@@ -381,7 +383,7 @@ as that answer, and an answer the request supplies is recorded as that
 - `--checker`: mark the brief as a checking pass and warn on steering words.
 - `--kind KIND`: the row's kind.
 - `--depth N`: the row's depth.
-- `--target PATH`: the row's target path.
+- `--target PATH`: the row's target path; an absolute target is resolved before the copy, so an in-project absolute path is recorded relative to the project root and a target that resolves outside the project is refused with a named error.
 - `--stamp-owner NAME`: the record id this row's stamp belongs to.
 - `--acceptance PATH[#Heading]`: the acceptance source the numbered checklist
   must cover. `brief` reads the source's list items, or the section the
@@ -503,6 +505,14 @@ Measure what changed against the baseline.
 ### `gate`
 
 Run a check command.
+
+The contract: a `{controls}` placeholder in the ARGV is replaced with the
+gate's recorded controls directory before the command runs, an ARGV without one
+runs verbatim with exactly its own arguments, and an ARGV after `--` that is
+empty selects the registered argv. The registered argv is the gate's control
+re-run: it renders `{controls}` against the same recorded controls directory
+`init` planted the known positive in, so its expected exit status is that
+gate's recorded `baseline_rc`.
 
 - `name` (positional): the gate's name.
 - `--expect exit0|nonempty|count`: what makes the gate pass. `count` passes only

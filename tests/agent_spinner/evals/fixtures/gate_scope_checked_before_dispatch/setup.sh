@@ -32,7 +32,7 @@ chmod +x "$proj/lint.sh"
 # Prove the refusal before the worker opens the real run.
 mkdir -p "$proj/.agent_spinner"
 if run_ledger "$proj" init --auto-fix-gate lint \
-  --gate "lint=./lint.sh" 2> "$proj/.agent_spinner/auto_fix_refused.txt"; then
+  --gate "lint=./lint.sh {controls}" 2> "$proj/.agent_spinner/auto_fix_refused.txt"; then
   echo "gate_scope fixture: init unexpectedly accepted an auto-fix gate" >&2
   exit 1
 fi

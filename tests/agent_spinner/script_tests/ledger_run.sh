@@ -996,6 +996,99 @@ PY
     fi
 }
 
+scenario_input_contracts() {
+    base="$1"
+
+    dir="$base/abs-target"
+    setup_repo "$dir"
+    ledger "$dir" init --unit produce:a --unit-path produce:a=a.txt >/dev/null 2>&1
+    if ledger "$dir" brief produce:a --body "A" --target "$dir/a.txt" >/dev/null 2>&1; then
+        ok "a brief with an in-project absolute target succeeds"
+    else
+        bad "a brief with an in-project absolute target succeeds"
+    fi
+    check "the absolute-target brief is written" test -f "$dir/.agent_spinner/briefs/produce:a.txt"
+    check "the recorded copy is a distinct file" test -f "$dir/.agent_spinner/baseline/inputs/produce:a/a.txt"
+    path=$(awk -F'\t' '$1=="produce:a"{print $5}' "$dir/.agent_spinner/roster.tsv")
+    check "the roster records the normalized relative path" test "$path" = a.txt
+    if ledger "$dir" brief produce:a --body "A again" >/dev/null 2>&1; then
+        ok "re-briefing the row with no target exits 0"
+    else
+        bad "re-briefing the row with no target exits 0"
+    fi
+    ledger "$dir" dispatch produce:a >/dev/null 2>&1
+    token=$(token_of "$dir" produce:a)
+    emit_return "$dir" produce:a "$token" '{"examined":[{"path":"a.txt","how":"full","receipt":"alpha"}]}'
+    if ledger "$dir" accept produce:a >/dev/null 2>&1; then
+        ok "the accept audit resolves the recorded copy"
+    else
+        bad "the accept audit resolves the recorded copy"
+    fi
+
+    odir="$base/outside"
+    setup_repo "$odir"
+    ledger "$odir" init --unit produce:a >/dev/null 2>&1
+    if ledger "$odir" brief produce:a --body "A" --target "$base/outside.txt" > "$odir/.agent_spinner/outside.out" 2>&1; then
+        bad "an out-of-project absolute target is refused"
+    else
+        ok "an out-of-project absolute target is refused"
+    fi
+    check "the refusal names the row and the target" grep -q 'outside' "$odir/.agent_spinner/outside.out"
+
+    gdir="$base/no-controls"
+    setup_repo "$gdir"
+    if ledger "$gdir" init --unit produce:a --gate "lint=./lint.sh" > "$gdir/init.out" 2>&1; then
+        bad "init refuses a gate argv without {controls}"
+    else
+        ok "init refuses a gate argv without {controls}"
+    fi
+    check "the refusal names the gate" grep -q 'lint' "$gdir/init.out"
+    check "the refused init leaves no request.txt" test ! -f "$gdir/.agent_spinner/request.txt"
+
+    adir="$base/gate-argv"
+    setup_repo "$adir"
+    cat > "$adir/gate.sh" <<'SH'
+#!/bin/sh
+printf '%s\n' "$@" > "$(dirname "$0")/gate-args.txt"
+printf 'known-positive.md\n'
+exit 1
+SH
+    chmod +x "$adir/gate.sh"
+    ledger "$adir" init --unit produce:a --gate "md=$adir/gate.sh {controls}" >/dev/null 2>&1
+    ledger "$adir" gate md -- > "$adir/.agent_spinner/control.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 1 ] && grep -q 'controls/md' "$adir/gate-args.txt"; then
+        ok "gate NAME -- renders the registered argv's controls directory"
+    else
+        bad "gate NAME -- renders the registered argv's controls directory (rc=$rc)"
+    fi
+    if "$PY" - "$adir/.agent_spinner/ledger.jsonl" <<'PY'
+import json
+import sys
+
+records = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+results = [r for r in records if r.get("type") == "gate_result"]
+if not results:
+    raise SystemExit(1)
+last = results[-1]
+if last.get("exit") != 1 or last.get("ok") is not False:
+    raise SystemExit("gate_result exit=%r ok=%r" % (last.get("exit"), last.get("ok")))
+PY
+    then
+        ok "the control re-run records the baseline exit with ok false"
+    else
+        bad "the control re-run records the baseline exit with ok false"
+    fi
+    ledger "$adir" gate md -- "$adir/gate.sh" '{controls}' >/dev/null 2>&1
+    check "an operator ARGV renders the {controls} placeholder" grep -q 'controls/md' "$adir/gate-args.txt"
+    ledger "$adir" gate md -- "$adir/gate.sh" >/dev/null 2>&1
+    if grep -q 'controls' "$adir/gate-args.txt"; then
+        bad "an operator ARGV without a placeholder runs verbatim"
+    else
+        ok "an operator ARGV without a placeholder runs verbatim"
+    fi
+}
+
 scenario_nonrepo_walk() {
     dir=$(mktemp -d "${TMPDIR:-/tmp}/ledger-nonrepo.XXXXXX")
     setup_plain "$dir"
@@ -4599,6 +4692,7 @@ run_all_scenarios() {
     scenario_ignored_residue "$root/ignored-residue"
     scenario_ignored_residue_no_change "$root/ignored-residue-no-change"
     scenario_nonrepo_walk "$root/nonrepo"
+    scenario_input_contracts "$root/input-contracts"
     scenario_small_return "$root/small-return"
     scenario_approved_edits "$root/approved"
     scenario_counters "$root/counters"
